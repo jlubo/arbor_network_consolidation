@@ -1,0 +1,7 @@
+#!/bin/sh
+
+screen -d -m /bin/bash run_defaultnet_10s-recall_desktop 100
+screen -d -m /bin/bash run_defaultnet_10s-recall_desktop 150
+screen -d -m /bin/bash run_defaultnet_10s-recall_desktop 200
+screen -d -m /bin/bash run_defaultnet_10s-recall_desktop 250
+screen -d -m /bin/bash run_defaultnet_10s-recall_desktop 300

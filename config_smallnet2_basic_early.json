@@ -1,0 +1,72 @@
+{
+	"simulation" : 
+	{
+		"description" : "Network of 4 exc. neurons, without background input, stimulated with a basic protocol to induce noisy early-phase plasticity",
+		"short_description" : "Basic early",
+		"runtime" : 0.2,
+		"dt" : 0.2,
+		"dt_ff" : 0.2,
+		"output_period" : 1,
+		"reduced_data" : 0,
+		"sample_gid_list" : [1],
+		"sample_syn_list" : [0],
+		"learn_protocol": {
+			"time_start": 0,
+			"scheme": "EXPLICIT",
+			"freq": 0,
+			"explicit_input" : {
+				"receivers" : [ 0 ],
+				"stim_times" : [ 10, 20, 30, 40, 50, 60, 100 ]
+			}
+		},
+		"recall_protocol": { },
+		"bg_protocol": { }
+	},
+	"populations" :
+	{
+		"N_exc" : 4,
+		"N_inh" : 0,
+		"N_CA" : 0,
+		"w_ei" : 2.0, 
+		"w_ie" : 4.0,
+		"w_ii" : 4.0,
+		"p_c" : 0.1,
+		"p_r" : 0.5,
+		"conn_file": "connections_smallnet2.txt"
+	},
+	"neuron" : 
+	{
+		"mechanism" : "lif",
+		"V_init" : -65.0,
+		"V_rev" : -65.0,
+		"V_reset" : -70.0,
+		"V_th" : -55.0,
+		"R_leak" : 10.0,
+		"R_reset" : 1e-10,
+		"C_mem" : 1e-9,
+		"t_ref" : 2.0,
+		"radius" : 1e-3
+	},
+	"synapses" : 
+	{
+		"tau_syn" : 5.0,
+		"t_ax_delay" : 3.0,
+		"syn_exc_calcium_plasticity" : 
+		{
+			"h_0" : 4.20075,
+			"t_Ca_delay" : 18.8,
+			"Ca_pre" : 1.0,
+			"Ca_post" : 0.2758,
+            "sigma_pl" : 2.90436,
+			"theta_p" : 3.0,
+			"theta_d" : 1.2,
+			"theta_pro" : 2.10037,
+			"theta_tag" : 0.840149,
+			"tau_h" : 688400,
+			"tau_z" : 3600000,
+			"tau_Ca" : 48.8,
+			"tau_p" : 3600000	
+		}
+	}
+}
+

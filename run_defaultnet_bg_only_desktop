@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# set environment variables required to run custom Arbor installation
+source set_arbor_env_dev
+
+# run the simulation
+python3 ./arborNetworkConsolidation.py -s_desc="bg no stim" -runtime=1 -config_file="config_defaultnet.json" -learn='{}' -recall='{}' -sample_gid=68 -sample_syn=153 -output_period=1 -sample_curr=0
+

@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# set environment variables required to run custom Arbor installation
+source set_arbor_env_dev
+
+# run specific tests with console output
+#pytest ./test_arborNetworkConsolidation.py::test_smallnet2_basic_early -s
+#pytest ./test_arborNetworkConsolidation.py::test_smallnet2_basic_late -s
+#pytest ./test_arborNetworkConsolidation.py::test_generated_connectivity -s
+#pytest ./test_arborNetworkConsolidation.py::test_smallnetX_onespike -s
+#pytest ./test_arborNetworkConsolidation.py::test_defn_max_activity -s
+#pytest ./test_arborNetworkConsolidation.py::test_smallnet3_schedules -s
+
+# run all tests with line coverage output
+coverage run -m pytest ./test_arborNetworkConsolidation.py
+coverage report -m --omit=/usr/* > test_coverage.txt

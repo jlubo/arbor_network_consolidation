@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# set environment variables required to run custom Arbor installation
+source set_arbor_env_dev
+
+# number of trials
+num_trials=10
+
+# cell assembly size
+N_CA=$1
+
+# run the simulations
+for (( i=1; i <= $num_trials; ++i ))
+do
+    python3 ./arborNetworkConsolidation.py -s_desc="net CA${N_CA} 10s-recall" -N_CA=${N_CA} -runtime=25 -recall='{"time_start": 20, "scheme": "ONEPULSE", "freq": 100, "N_stim": 25}' -config_file="config_defaultnet.json" -output_period=10
+done

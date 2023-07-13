@@ -1,0 +1,36 @@
+#!/bin/bash
+#SBATCH -J arbor_net
+#SBATCH -t 120:00:00
+#SBATCH -p medium
+#SBATCH -n 1
+#SBATCH -c 1
+#~
+#SBATCH -o out/%J_out
+#SBATCH -o out/%J_err
+#SBATCH --qos=long
+#--SBATCH -C scratch2
+
+# prepare environment
+module load anaconda3
+source activate myenv_arbor_1
+#~
+
+# set environment variables required to run custom Arbor installation
+source set_arbor_env_dev
+
+# number of trials
+num_trials=10
+
+# cell assembly size
+N_CA=$1
+
+# gather job information
+add_info="Job ID: ${SLURM_JOB_ID}; partition: ${SLURM_JOB_PARTITION}; num. nodes: ${SLURM_JOB_NUM_NODES}; num. CPUs: ${SLURM_JOB_CPUS_PER_NODE}"
+
+# run the simulations
+for (( i=1; i <= $num_trials; ++i ))
+do
+    python3 ./arborNetworkConsolidation.py -s_desc="net CA${N_CA} 8h-recall ${SLURM_JOB_PARTITION} CPU" -N_CA=${N_CA} -runtime=28820 -recall='{"time_start": 28810, "scheme": "ONEPULSE", "freq": 100, "N_stim": 25}' -config_file="config_defaultnet.json" -output_period=10
+done
+
+conda deactivate

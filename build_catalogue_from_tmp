@@ -1,0 +1,10 @@
+#!/bin/bash
+
+current_working_dir=${PWD}
+
+# build the catalogue from raw (C++) mechanisms
+cd tmp/build
+#rsync -a --exclude '*.mod' ../mod/* generated/custom/ # for raw mechanisms
+make
+rsync -a custom-catalogue.so ../../
+cd ../..
