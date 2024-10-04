@@ -1,0 +1,19 @@
+#!/bin/bash
+
+num_trials=10
+for (( i=1; i <= $num_trials; ++i ))
+do
+	# 10s-recall
+	sbatch run_defaultnet_10s-recall_gwdg-medium_cpu 100 $i
+	sbatch run_defaultnet_10s-recall_gwdg-medium_cpu 150 $i
+	sbatch run_defaultnet_10s-recall_gwdg-medium_cpu 200 $i
+	sbatch run_defaultnet_10s-recall_gwdg-medium_cpu 250 $i
+	sbatch run_defaultnet_10s-recall_gwdg-medium_cpu 300 $i
+
+	# 8h-recall
+	sbatch run_defaultnet_8h-recall_gwdg-medium_cpu 100 $i
+	sbatch run_defaultnet_8h-recall_gwdg-medium_cpu 150 $i
+	sbatch run_defaultnet_8h-recall_gwdg-medium_cpu 200 $i
+	sbatch run_defaultnet_8h-recall_gwdg-medium_cpu 250 $i
+	sbatch run_defaultnet_8h-recall_gwdg-medium_cpu 300 $i
+done

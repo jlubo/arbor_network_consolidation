@@ -4,5 +4,9 @@
 *.so
 *.bak
 *.log
+*.tar.gz
 */
 !mechanisms/
+!extract/
+!extract/analysis/
+

@@ -12,36 +12,38 @@ import os
 import inspect
 import pytest
 import arborNetworkConsolidation as anc
+from arbor import units as U
 from outputUtilities import redText, cyanText, \
                             setDataPathPrefix, getDataPath
 
 epsilon = 6e-7 # similar to default tolerance value used by pytest.approx()
 setDataPathPrefix("tmp_data_")  # added "tmp_" for test results
 
-###############################################################################	
-# Test the connectivity of 5 ad-hoc generated networks of 2000 neurons
-@pytest.mark.parametrize("config_file", 1*["test_config_randomnet.json"])
-#def generated_connectivity(repeat):
-def test_generated_connectivity(config_file):	
+###############################################################################
+# Test the connectivity of ad-hoc generated networks of 2000 neurons
+@pytest.mark.parametrize("config_file", 1*["config_defaultnet-like.json"])
+def test_generated_connectivity(config_file):
 
 	# configuration
 	config = json.load(open(config_file, "r")) # load JSON file
+	config["simulation"]["runtime"] = 0.1 # very short runtime (we are only interested in the initial connectivity)
+	config["simulation"]["sample_gid_list"] = [ ] # no neuron probes
+	config["simulation"]["sample_syn_list"] = [ ] # no synapse probes
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation
-	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')")
+	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')", platform = "CPU")
 
 	# test the numbers of excitatory and inhibitory neurons
-	assert recipe.exc_neurons_counter == config['populations']['N_exc'] 
+	assert recipe.exc_neurons_counter == config['populations']['N_exc']
 	assert recipe.inh_neurons_counter == config['populations']['N_inh']
 
 	# test if number of connections of the generated connectivity matrix does not deviate more than 5% from the expected value
 	assert np.abs(recipe.p_c * (recipe.N_tot**2 - recipe.N_tot) - recipe.connections_counter) < 0.05 * recipe.p_c * (recipe.N_tot**2 - recipe.N_tot)
 
-###############################################################################	
+###############################################################################
 # Test the connectivity of the pre-defined default network of 2000 neurons
 @pytest.mark.parametrize("config_file", ["config_defaultnet.json"])
-#def defn_connectivity(config_file):
 def test_defn_connectivity(config_file):
 
 	# configuration
@@ -49,11 +51,10 @@ def test_defn_connectivity(config_file):
 	config["simulation"]["runtime"] = 0.1 # very short runtime (we are only interested in the initial connectivity)
 	config["simulation"]["sample_gid_list"] = [ ] # no neuron probes
 	config["simulation"]["sample_syn_list"] = [ ] # no synapse probes
-	
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation 
-	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')")
+	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')", platform = "CPU")
 
 	# test the number of connections of the pre-defined connectivity matrix
 	assert recipe.connections_counter == 400012 
@@ -95,7 +96,6 @@ def test_defn_connectivity(config_file):
                                                     ("onespike_ei", "test_config_defaultnet_onespike_ei.json"), \
                                                     ("onespike_ie", "test_config_defaultnet_onespike_ie.json"), \
                                                     ("onespike_ii", "test_config_defaultnet_onespike_ii.json")])
-#def defn_onespike(test_type, config_file):
 def test_defn_onespike(test_type, config_file):
 
 	#-----------------------------------------------------------------------------------
@@ -122,7 +122,7 @@ def test_defn_onespike(test_type, config_file):
 	s_desc = config["simulation"]["short_description"] # short description of the simulation
 	dt = config["simulation"]["dt"]
 	learn_prot = anc.completeProt(config["simulation"]["learn_protocol"])
-	
+
 	n_stim = len(learn_prot["explicit_input"]["stim_times"]) # the number of stimulus pulses
 	config["simulation"]["sample_curr"] = 1 # retrieve Ornstein-Uhlenbeck stimulation current
 	sample_gid = config["simulation"]["sample_gid_list"][0] # gid of the neuron to be probed (e.g., 68)
@@ -130,7 +130,7 @@ def test_defn_onespike(test_type, config_file):
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation 
-	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ({test_type}, '{config_file}')")
+	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ({test_type}, '{config_file}')", platform = "CPU")
 
 	# test the functional effects of a spike that is evoked at a determined time
 	tb_before_last_spike = int((learn_prot["explicit_input"]["stim_times"][n_stim-1] + config["synapses"]["t_ax_delay"])/dt) # timestep right before the onset of the PSP caused by the last stimulus
@@ -138,7 +138,7 @@ def test_defn_onespike(test_type, config_file):
 	data_stacked = np.loadtxt(getDataPath(s_desc, "traces.txt"))
 
 	printValues(data_stacked, tb_before_last_spike, tb_before_last_Ca_increase+2, dt)
-	
+
 	assert data_stacked[tb_before_last_spike+2][2] == pytest.approx(0) # upon PSP onset: stimulation current equal zero (again)
 
 	# specifics of the different tests
@@ -165,7 +165,6 @@ def test_defn_onespike(test_type, config_file):
 ###############################################################################	
 # Test of the network simulation with background noise and with ad-hoc generated connectivity
 @pytest.mark.parametrize("config_file", ["config_defaultnet.json"])
-#def defn_background_noise(config_file):
 def test_defn_background_noise(config_file):
 
 	# configuration
@@ -180,7 +179,7 @@ def test_defn_background_noise(config_file):
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation
-	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')")
+	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')", platform = "CPU")
 
 	# test the averaged noise current
 	data_stacked = np.loadtxt(getDataPath(s_desc, "traces.txt"))
@@ -197,7 +196,6 @@ def test_defn_background_noise(config_file):
 ###############################################################################	
 # Testing a neuron that fires at maximal activity
 @pytest.mark.parametrize("config_file", ["test_config_defaultnet_max_activity.json", "test_config_defaultnet_max_activity_no_conn.json"])
-#def defn_max_activity(config_file, num_spikes_max_activity):
 def test_defn_max_activity(config_file, num_spikes_max_activity):
 
 	# configuration
@@ -213,31 +211,30 @@ def test_defn_max_activity(config_file, num_spikes_max_activity):
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation
-	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')")
+	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')", platform = "CPU")
 
 	# get the spikes
 	spike_data = np.loadtxt(getDataPath(s_desc, "spikes.txt")).transpose()
 	spikes_0 = spike_data[0][spike_data[1] == 0] # spike times of neuron 0
-	
+
 	# test the number of spikes # TODO check why it is always a bit lower in the unconnected case!
 	print("Number of spikes in neuron 0: ", len(spikes_0))
 	assert len(spikes_0) == pytest.approx(1000*config['simulation']['runtime'] / (config['neuron']['t_ref']+config['simulation']['dt']), 0.1) # number of spikes approx. equal to t_stim/t_ref
 	if config["populations"]["p_c"] > epsilon: # in the case that there is connectivity
 		if num_spikes_max_activity['no_conn'] is not None: # if test without connectivity has run already
 			assert num_spikes_max_activity['no_conn'] == len(spikes_0) # assert that connectivity does not matter (CROSS-TEST)
-		else:		
+		else:
 			num_spikes_max_activity['conn'] = len(spikes_0) # store the number of spikes
 	else: # in the case that there is no connectivity
 		assert len(spike_data[0]) == len(spikes_0) # assert that only neuron 0 spikes
 		if num_spikes_max_activity['conn'] is not None: # if test with connectivity has run already
 			assert len(spikes_0) == pytest.approx(num_spikes_max_activity['conn'], 0.1) # assert that connectivity does not matter (CROSS-TEST)
-		else:		
+		else:
 			num_spikes_max_activity['no_conn'] = len(spikes_0) # store the number of spikes
 
 ###############################################################################	
 # Test of a neuron that is stimulated with a constant current (with and without relaxation after 100 ms)
 @pytest.mark.parametrize("config_file", ["test_config_defaultnet_conv.json", "test_config_defaultnet_conv_relax.json"])
-#def def_const_conv_relax(config_file):
 def test_def_const_conv_relax(config_file):
 
 	# configuration
@@ -251,7 +248,7 @@ def test_def_const_conv_relax(config_file):
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation
-	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')")
+	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')", platform = "CPU")
 
 	# test the initial state
 	data_stacked = np.loadtxt(getDataPath(s_desc, "traces.txt"))
@@ -276,7 +273,6 @@ def test_def_const_conv_relax(config_file):
 @pytest.mark.parametrize("network, config_file", [("smallnet", "config_smallnetX_non-det.json"), \
                                                   ("smallnet2", "config_smallnetX_non-det.json"), \
                                                   ("smallnet3", "config_smallnetX_non-det.json")])
-#def smallnetX_connectivity(network, config_file):
 def test_smallnetX_connectivity(network, config_file):
 
 	# configuration
@@ -293,7 +289,7 @@ def test_smallnetX_connectivity(network, config_file):
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation
-	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ({network}, '{config_file}')")
+	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ({network}, '{config_file}')", platform = "CPU")
 
 	if network == "smallnet":
 		# test the number of connections of the pre-defined connectivity matrix
@@ -347,7 +343,6 @@ def test_smallnetX_connectivity(network, config_file):
 @pytest.mark.parametrize("network, config_file", [("smallnet", "config_smallnetX_non-det.json"), \
                                                   ("smallnet2", "config_smallnetX_non-det.json"), \
                                                   ("smallnet3", "config_smallnetX_non-det.json")])
-#def smallnetX_max_activity(network, config_file):
 def test_smallnetX_max_activity(network, config_file):
 
 	# configuration
@@ -365,7 +360,7 @@ def test_smallnetX_max_activity(network, config_file):
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation
-	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ({network}, '{config_file}')")
+	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ({network}, '{config_file}')", platform = "CPU")
 
 	# test the initial state
 	data_stacked = np.loadtxt(getDataPath(s_desc, "traces.txt"))
@@ -375,17 +370,19 @@ def test_smallnetX_max_activity(network, config_file):
 	# get the spikes
 	spike_data = np.loadtxt(getDataPath(s_desc, "spikes.txt")).transpose()
 	spikes_0 = spike_data[0][spike_data[1] == 0] # spike times of neuron 0
-	
+
 	# test the number of spikes
 	print("Number of spikes in neuron 0: ", len(spikes_0))
 	assert len(spikes_0) == pytest.approx(1000*config['simulation']['runtime'] / config['neuron']['t_ref'], 0.15) # number of spikes approx. equal to t_stim/t_ref
-	
+
 ###############################################################################	
 # Test the response of a small network of 3 exc. neurons and up to 1 inh. neuron, where one exc. neuron is stimulated to fire a single spike
-@pytest.mark.parametrize("network, config_file", [("smallnet2", "test_config_smallnet2_det_onespike.json"), \
-                                                  ("smallnet3", "test_config_smallnet3_det_onespike.json")])
-#def smallnetX_onespike(network, config_file):
-def test_smallnetX_onespike(network, config_file):
+@pytest.mark.parametrize("network, config_file, platform",
+                         [("smallnet2", "test_config_smallnet2_det_onespike.json", "CPU"),
+                          ("smallnet2", "test_config_smallnet2_det_onespike.json", "GPU"),
+                          ("smallnet3", "test_config_smallnet3_det_onespike.json", "CPU"),
+                          ("smallnet3", "test_config_smallnet3_det_onespike.json", "GPU")])
+def test_smallnetX_onespike(network, config_file, platform):
 
 	# configuration
 	config = json.load(open(config_file, "r")) # load JSON file
@@ -406,8 +403,8 @@ def test_smallnetX_onespike(network, config_file):
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation
-	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')")
-	
+	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')", platform = platform)
+
 	# test impact of the spike
 	tb_before_first_spike = int((learn_prot["explicit_input"]["stim_times"][0] + config["synapses"]["t_ax_delay"])/dt) # timestep right before the onset of the PSP caused by the (first) stimulus
 	tb_before_first_Ca_pre_increase = int((learn_prot["explicit_input"]["stim_times"][0] + config["synapses"]["syn_exc_calcium_plasticity"]["t_Ca_delay"])/dt) # timestep right before the presynapse-induced calcium increase caused by the (first) stimulus
@@ -436,34 +433,50 @@ def test_smallnetX_onespike(network, config_file):
 
 ###############################################################################	
 # Test schedules of learning phase, consolidation phase, and recall phase, or background activity in a small network
-@pytest.mark.parametrize("runtime, learn, recall, config_file", [(28820, True, True, "test_config_smallnet3_det_learn_8h-recall.json"),
-                                                                 (4, True, True, "test_config_smallnet3_det_learn_2s-recall.json"),
-                                                                 (28820, True, False, "test_config_smallnet3_det_learn_8h-recall.json"),
-                                                                 (4, True, False, "test_config_smallnet3_det_learn_2s-recall.json"),
-                                                                 (28820, False, True, "test_config_smallnet3_det_learn_8h-recall.json"),
-                                                                 (4, False, True, "test_config_smallnet3_det_learn_2s-recall.json"),
-                                                                 (28820, False, False, "test_config_smallnet3_det_learn_8h-recall.json"),
-                                                                 (4, False, False, "test_config_smallnet3_det_learn_2s-recall.json")])
-#def smallnet3_schedules(runtime, learn, recall, config_file):
-def test_smallnet3_schedules(runtime, learn, recall, config_file):
+@pytest.mark.parametrize("runtime, learn, recall, config_file, platform",
+                         [(28820, True, True, "test_config_smallnet3_det_learn_8h-recall.json", "CPU"),
+                          (28820, True, True, "test_config_smallnet3_det_learn_8h-recall.json", "GPU"),
+                          (4, True, True, "test_config_smallnet3_det_learn_2s-recall.json", "CPU"),
+                          (4, True, True, "test_config_smallnet3_det_learn_2s-recall.json", "GPU"),
+                          (28820, True, False, "test_config_smallnet3_det_learn_8h-recall.json", "CPU"),
+                          (28820, True, False, "test_config_smallnet3_det_learn_8h-recall.json", "GPU"),
+                          (4, True, False, "test_config_smallnet3_det_learn_2s-recall.json", "CPU"),
+                          (4, True, False, "test_config_smallnet3_det_learn_2s-recall.json", "GPU"),
+                          (28820, False, True, "test_config_smallnet3_det_learn_8h-recall.json", "CPU"),
+                          (28820, False, True, "test_config_smallnet3_det_learn_8h-recall.json", "GPU"),
+                          (4, False, True, "test_config_smallnet3_det_learn_2s-recall.json", "CPU"),
+                          (4, False, True, "test_config_smallnet3_det_learn_2s-recall.json", "GPU"),
+                          (28820, False, False, "test_config_smallnet3_det_learn_8h-recall.json", "CPU"),
+                          (28820, False, False, "test_config_smallnet3_det_learn_8h-recall.json", "GPU"),
+                          (4, False, False, "test_config_smallnet3_det_learn_2s-recall.json", "CPU"),
+                          (4, False, False, "test_config_smallnet3_det_learn_2s-recall.json", "GPU")])
+def test_smallnet3_schedules(runtime, learn, recall, config_file, platform):
 
 	# configuration
 	config = json.load(open(config_file, "r")) # load JSON file
 	s_desc = config['simulation']['short_description'] # short description of the simulation
 	config['simulation']['runtime'] = runtime # runtime in seconds
-	if not learn:	
+	if learn:
+		s_desc += ", learn"
+	else:
+		s_desc += ", no learn"
 		config['simulation']['learn_protocol'] = anc.completeProt({ }) # no learning protocol
-	if not recall:
+	if recall:
+		s_desc += ", recall"
+	else:
+		s_desc += ", no recall"
 		config['simulation']['recall_protocol'] = anc.completeProt({ }) # no recall protocol
+	s_desc += f", {runtime}, {platform}"
+	config['simulation']['short_description'] = s_desc
 	config['simulation']['sample_gid_list'] = [1] # probe neuron 1
 	config['simulation']['sample_syn_list'] = [0] # probe first synapse incoming to neuron 1
 	config['simulation']['sample_curr'] = 1 # retrieve Ornstein-Uhlenbeck stimulation current
-	
+
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation
-	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')")
-	
+	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')", platform = platform)
+
 	# test if the right schedule has been selected
 	keyword = "Schedule: "
 	schedule = None
@@ -471,10 +484,11 @@ def test_smallnet3_schedules(runtime, learn, recall, config_file):
 		for line in f:
 			if line.find(keyword) == 0:
 				schedule = line[len(keyword):].rstrip()
+	print(f"{keyword}{schedule}")
 	if learn and recall and runtime >= 25:
 		assert schedule == "learn - consolidate - recall"
 	elif learn and recall and runtime < 25:
-		assert schedule == "learn - recall"
+		assert schedule == "learn+recall"
 	elif learn and not recall and runtime >= 25:
 		assert schedule == "learn - consolidate"
 	elif learn and not recall and runtime < 25:
@@ -490,8 +504,8 @@ def test_smallnet3_schedules(runtime, learn, recall, config_file):
 
 	# see if values loaded for recall phase are valid
 	if schedule == "learn - consolidate - recall":
-		assert recipe.h[1][0] == pytest.approx(recipe.h_0, 0.05) # early-phase weight has decayed at synapse 0->1
-		assert recipe.z[1][0] > 0.4 # late-phase weight has built up at synapse 0->1
+		assert recipe.h[1][0] == pytest.approx(recipe.h_0.value_as(U.mV), 0.05) # early-phase weight has decayed at synapse 0->1
+		assert recipe.z[1][0] > 0.4  # late-phase weight has built up at synapse 0->1 (NOTE: no `h_0` normalization here!)
 		assert recipe.p[1] > epsilon # protein has built up at neuron 1
 
 	# get spikes & test the number of spikes (unless the schedule is "consolidate", where no spikes are computed)
@@ -526,8 +540,7 @@ def test_smallnet3_schedules(runtime, learn, recall, config_file):
 # Test a basic protocol for early-phase plasticity in a small pre-defined network ('smallnet2')
 @pytest.mark.parametrize("prot, config_file", [("learn_protocol", "config_smallnet2_basic_early.json"), \
                                                ("learn_protocol", "config_smallnet2_basic_early_det.json"), \
-                                               ("recall_protocol", "config_smallnet2_basic_early_recall.json")])
-#def smallnet2_basic_early(config_file):
+                                               ("recall_protocol", "test_config_smallnet2_basic_early_recall.json")])
 def test_smallnet2_basic_early(prot, config_file):
 
 	# configuration (with explicit input through learning and recall protocols)
@@ -540,39 +553,45 @@ def test_smallnet2_basic_early(prot, config_file):
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation 
-	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')")
+	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')", platform = "CPU")
 
 	# test the plasticity induced by some spikes evoked at determined times
 	tb_before_last_spike = int((stim_prot["explicit_input"]["stim_times"][n_stim-1] + config["synapses"]["t_ax_delay"])/dt) # timestep right before the onset of the PSP caused by the last stimulus
 	tb_before_last_Ca_increase = int((stim_prot["explicit_input"]["stim_times"][n_stim-1] + config["synapses"]["syn_exc_calcium_plasticity"]["t_Ca_delay"])/dt) # timestep right before the presynapse-induced calcium increase caused by the last stimulus
 	data_stacked = np.loadtxt(getDataPath(s_desc, "traces.txt"))
 
-	assert data_stacked[tb_before_last_spike+2][2] == pytest.approx(0) # upon PSP onset: stimulation current equal zero (again)
 	assert data_stacked[tb_before_last_spike+2][1] > config["neuron"]["V_rev"] + epsilon # upon PSP onset: membrane potential greater than V_rev
-	assert data_stacked[tb_before_last_Ca_increase+2][3] > recipe.h_0 + epsilon # early-phase weight greater than h_0
+	assert data_stacked[tb_before_last_spike+2][2] == pytest.approx(0) # upon PSP onset: stimulation current equal zero (again)
+	assert data_stacked[tb_before_last_Ca_increase+2][3] > recipe.h_0.value_as(U.mV) + epsilon # early-phase weight greater than h_0
+	assert data_stacked[tb_before_last_Ca_increase+2][4] == pytest.approx(0) # late-phase weight equal to zero
 	assert data_stacked[tb_before_last_Ca_increase+2][5] + epsilon < config["synapses"]["syn_exc_calcium_plasticity"]["theta_p"] # calcium amount less than theta_p
 	assert data_stacked[tb_before_last_Ca_increase+2][5] > config["synapses"]["syn_exc_calcium_plasticity"]["theta_d"] + epsilon # calcium amount greater than theta_d
+	assert data_stacked[tb_before_last_Ca_increase+2][6] > epsilon # signal triggering protein synthesis greater than zero
 	assert data_stacked[tb_before_last_Ca_increase+2][7] == pytest.approx(0) # protein concentration equal to zero
-	assert data_stacked[tb_before_last_Ca_increase+2][4] == pytest.approx(0) # late-phase weight equal to zero
 
 ###############################################################################	
 # Test a basic protocol for late-phase plasticity in a small pre-defined network ('smallnet2')
-@pytest.mark.parametrize("config_file", ["config_smallnet2_basic_late.json", \
-                                         "test_config_smallnet2_basic_late_noff.json"])
-#def smallnet2_basic_late(config_file):
-def test_smallnet2_basic_late(config_file):
+#@pytest.mark.parametrize("config_file, platform", [("config_smallnet2_basic_late.json", "CPU"),
+#                                                   ("test_config_smallnet2_basic_late_noff.json", "CPU")])
+@pytest.mark.parametrize("config_file, platform", [("config_smallnet2_basic_late.json", "CPU"),
+                                                   ("config_smallnet2_basic_late.json", "GPU"),
+                                                   ("test_config_smallnet2_basic_late_noff.json", "CPU")])
+#@pytest.mark.parametrize("config_file, platform", [("config_smallnet2_basic_late.json", "GPU")])
+#@pytest.mark.parametrize("config_file, platform", [("test_config_smallnet2_basic_late_noff.json", "GPU")])
+def test_smallnet2_basic_late(config_file, platform):
 
 	# configuration (with learning protocol)
 	config = json.load(open(config_file, "r")) # load JSON file
-	s_desc = config["simulation"]["short_description"] # short description of the simulation
+	s_desc = config["simulation"]["short_description"] + f", {platform}" # short description of the simulation
 	dt = config["simulation"]["dt"]
 	op = config["simulation"]["output_period"] # should be greater than 1 because of long learning stimulation phase
 	stim_prot = anc.completeProt(config["simulation"]["learn_protocol"])
+	config["simulation"]["short_description"] = s_desc
 	config["simulation"]["sample_curr"] = 1 # retrieve Ornstein-Uhlenbeck stimulation current
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation 
-	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')")
+	recipe = anc.arborNetworkConsolidation(config, add_info=f"{cyanText(func_name)} ('{config_file}')", platform = platform)
 
 	# test the plasticity induced by strong stimulation
 	data_stacked = np.loadtxt(getDataPath(s_desc, "traces.txt"))
@@ -581,22 +600,22 @@ def test_smallnet2_basic_late(config_file):
 
 	tau_h = config["synapses"]["syn_exc_calcium_plasticity"]["tau_h"]
 	theta_pro = config["synapses"]["syn_exc_calcium_plasticity"]["theta_pro"]
+	p_max = config["synapses"]["syn_exc_calcium_plasticity"]["p_max"]
 	h_stim_end = data_stacked[tb_before_stim_end][3] # early-phase weight upon the end of the stimulation
-
-	tb_before_ps_end = tb_before_stim_end + int(tau_h / 0.1 * np.log((h_stim_end - recipe.h_0) / theta_pro)/dt/op) # timestep right before the protein synthesis ends (in case there are no fast-forward timesteps)
+	tb_before_ps_end = tb_before_stim_end + int(tau_h / 0.1 * np.log((h_stim_end - recipe.h_0.value_as(U.mV)) / theta_pro)/dt/op) # timestep right before the protein synthesis ends (in case there are no fast-forward timesteps)
 
 	assert data_stacked[tb_before_stim_end][5] > config["synapses"]["syn_exc_calcium_plasticity"]["theta_p"] + epsilon # calcium amount greater than theta_p -- at the end of the stimulation
-	assert h_stim_end == pytest.approx(2*recipe.h_0, 0.1) # early-phase weight built up fully -- at the end of the stimulation
-	assert data_stacked[-1][4] == pytest.approx(1.0, 0.1) # late-phase weight built up fully -- at the end of the whole simulation
+	assert h_stim_end == pytest.approx(2*recipe.h_0.value_as(U.mV), 0.1) # early-phase weight built up fully -- at the end of the stimulation
+	assert data_stacked[-1][4] == pytest.approx(recipe.h_0.value_as(U.mV), 0.1) # late-phase weight built up fully -- at the end of the whole simulation
 
-	# no consolidation (schedule: learn - recall)
+	# no consolidation (schedule: learn+recall)
 	if "_noff" in config_file:
-		assert data_stacked[tb_before_ps_end][7] == pytest.approx(1, 0.1) # protein concentration equal to one -- at the end of the protein synthesis
+		assert data_stacked[tb_before_ps_end][7] == pytest.approx(p_max, 0.15) # protein concentration equal to `p_max` -- at the end of the protein synthesis
 		assert data_stacked[tb_before_ps_end+1][6] < theta_pro # signal triggering protein synthesis below threshold -- at the end of the protein synthesis
 	# consolidation (schedule: learn - consolidate)
 	else:
-		assert data_stacked[tb_before_stim_end][7] == pytest.approx(1, 0.1) # protein concentration equal to one -- at the end of the stimulation
-		assert data_stacked[tb_before_stim_end+1][6] == pytest.approx(recipe.h_0, 0.1) # signal triggering protein synthesis at maximum -- at the end of the stimulation
+		assert data_stacked[tb_before_stim_end][7] == pytest.approx(p_max, 0.15) # protein concentration equal to `p_max` -- at the end of the stimulation
+		assert data_stacked[tb_before_stim_end+1][6] == pytest.approx(recipe.h_0.value_as(U.mV), 0.1) # signal triggering protein synthesis at maximum -- at the end of the stimulation
 
 ###############################################################################
 # Fixture: provides static variables to store the numbers of spikes that were found by test_def_max_activity() across tests

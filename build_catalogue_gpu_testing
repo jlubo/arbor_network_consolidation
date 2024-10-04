@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# set environment variables required to run custom Arbor installation
+source set_arbor_env_gpu_testing
+
+# compile the mechanisms and build the catalogue
+#rm -R -f ./tmp
+#CC=gcc-10 CXX=g++-10 arbor-build-catalogue custom mechanisms --debug "./tmp"
+#CC=gcc-10 CXX=g++-10 arbor-build-catalogue custom mechanisms
+arbor-build-catalogue custom mechanisms

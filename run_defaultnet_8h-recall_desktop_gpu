@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# build necessary catalogue (also sets the environment to run custom Arbor installation)
+source build_catalogue_gpu
+
+# number of trials
+num_trials=10
+
+# cell assembly size
+N_CA=$1
+
+# run the simulations
+for (( i=1; i <= $num_trials; ++i ))
+do
+    python3 ./arborNetworkConsolidation.py -s_desc="net CA${N_CA} 8h-recall" -platform="GPU" -N_CA=${N_CA} -runtime=28820 -recall='{"time_start": 28810, "scheme": "ONEPULSE", "freq": 100, "N_stim": 25}' -config_file="config_defaultnet-like.json" -output_period=10
+done

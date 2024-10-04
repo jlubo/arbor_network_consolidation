@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# build necessary catalogue (also sets the environment to run custom Arbor installation)
+source build_catalogue
+
+# run the simulations
+python3 -c "import runBatchesBasic as r; r.runSimulationBatches('basic_early', 10, 100)"

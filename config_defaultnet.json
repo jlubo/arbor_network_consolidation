@@ -35,7 +35,7 @@
 		"w_ii" : 4.0,
 		"p_c" : 0.1,
 		"p_r" : 0.5,
-		"conn_file": "connections_default.txt"
+		"conn_file" : "connections_default.txt"
 	},
 	"neuron" : 
 	{
@@ -65,6 +65,7 @@
 			"theta_d" : 1.2,
 			"theta_pro" : 2.10037,
 			"theta_tag" : 0.840149,
+			"p_max" : 10.0,
 			"tau_h" : 688400,
 			"tau_z" : 3600000,
 			"tau_Ca" : 48.8,

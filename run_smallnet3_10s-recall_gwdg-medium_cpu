@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -J arbor_net
+#SBATCH -J smallnet
 #SBATCH -t 48:00:00
 #SBATCH -p medium
 #SBATCH -n 1
@@ -9,14 +9,15 @@
 #SBATCH -o out/%J_err
 #--SBATCH --qos=long
 #--SBATCH -C scratch2
+#SBATCH -C cascadelake
 
 # prepare environment
-module load anaconda3
-source activate myenv_arbor_1
+module load anaconda3/2021.05
+source activate myenv_arbor
 #~
 
-# set environment variables required to run custom Arbor installation
-source set_arbor_env_dev
+# build necessary catalogue (also sets the environment to run custom Arbor installation)
+source build_catalogue
 
 # gather job information
 add_info="Job ID: ${SLURM_JOB_ID}; partition: ${SLURM_JOB_PARTITION}; num. nodes: ${SLURM_JOB_NUM_NODES}; num. CPUs: ${SLURM_JOB_CPUS_PER_NODE}"

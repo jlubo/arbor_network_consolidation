@@ -1,14 +1,16 @@
 #!/bin/sh
 
-# set environment variables required to run custom Arbor installation
-source set_arbor_env_dev
+# build necessary catalogue (also sets the environment to run custom Arbor installation)
+source build_catalogue_simd
 
 benchmark () {
 	# name of the benchmark
 	name=$1
 
 	# script and arguments to be used for the benchmark
-	cmd="python3 $2"
+	# if not existing, create a specific python version via `sudo ln -s /usr/bin/python3 /usr/bin/python3-benchmarking-sc`
+	python_version="python3-benchmarking-sc"
+	cmd="$python_version $2"
 	echo -e "Benchmark for:\n  $cmd"
 
 	# connectivity file
@@ -40,7 +42,9 @@ benchmark () {
 	# copy program files
 	cp -r ../*.py .
 	cp ../custom-catalogue.so .
-	cp ../${conn_file} .
+	if [[ -n ${conn_file} ]]; then
+		cp ../${conn_file} .
+	fi
 
 	# save system information
 	uname -a > sys_info.log
@@ -50,7 +54,7 @@ benchmark () {
 	sudo dmidecode >> sys_info.log
 
 	# start tracking the memory
-	sudo screen -d -m /bin/bash ../track_allocated_memory "python3" $slpintv
+	sudo screen -d -m /bin/bash ../track_allocated_memory $python_version $slpintv
 
 	# use hyperfine for running the simulation trials and tracking the runtime
 	screen -d -m hyperfine --runs ${num_trials} --export-json 'benchmark_hyperfine.json' "$cmd"
@@ -59,4 +63,5 @@ benchmark () {
 }
 
 #benchmark "2N1S_basic_late" "./arborNetworkConsolidation.py -config_file='../config_smallnet2_basic_late.json' -sample_curr=1" "connections_smallnet2.txt" 10 "20s"
-benchmark "CA200" "./arborNetworkConsolidation.py -s_desc='net CA200 8h-recall' -N_CA=200 -runtime=28820 -config_file='../config_defaultnet_8h-recall.json' -output_period=10" "connections_default.txt" 10 "15m"
+#benchmark "CA200" "./arborNetworkConsolidation.py -s_desc='net CA200 8h-recall' -N_CA=200 -runtime=28820 -recall='{\"time_start\": 28810, \"scheme\": \"ONEPULSE\", \"freq\": 100, \"N_stim\": 25}' -config_file='../config_defaultnet-like.json' -output_period=10" "" 10 "15m"
+benchmark "CA200_10s-recall" "./arborNetworkConsolidation.py -s_desc='net CA200 10s-recall' -N_CA=200 -runtime=25 -recall='{\"time_start\": 20, \"scheme\": \"ONEPULSE\", \"freq\": 100, \"N_stim\": 25}' -config_file='../config_defaultnet-like.json' -output_period=10" "" 10 "2m"

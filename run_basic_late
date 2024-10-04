@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# set environment variables required to run custom Arbor installation
-source set_arbor_env_dev
+# build necessary catalogue (also sets the environment to run custom Arbor installation)
+source build_catalogue
 
 # run the simulations
 python3 ./arborNetworkConsolidation.py -config_file="config_smallnet2_basic_late.json" -sample_curr=1

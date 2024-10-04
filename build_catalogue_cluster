@@ -1,16 +1,15 @@
 #!/bin/bash
 
-module load anaconda3
-source activate myenv_arbor_1
-#module load python/3.8.10
-module load gcc/10.2.0
-module load cuda
-module load cmake
+# prepare environment
+module load anaconda3/2021.05
+source activate myenv_arbor
 
 # set environment variables required to run custom Arbor installation
-source set_arbor_env_dev
+source set_arbor_env
 
 # compile the mechanisms and build the catalogue
+#rm -R -f ./tmp
+#arbor-build-catalogue custom mechanisms --debug "./tmp"
 arbor-build-catalogue custom mechanisms
 
 conda deactivate

@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# set environment variables required to run custom Arbor installation
+source set_arbor_env_simd
+
+# compile the mechanisms and build the catalogue
+#rm -R -f ./tmp
+#arbor-build-catalogue custom mechanisms --debug "./tmp"
+arbor-build-catalogue custom mechanisms

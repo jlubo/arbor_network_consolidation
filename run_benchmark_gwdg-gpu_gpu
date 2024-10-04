@@ -1,0 +1,81 @@
+#!/bin/bash
+#SBATCH -J SC_10s-recall
+#SBATCH -t 48:00:00
+#SBATCH -p gpu
+#SBATCH -n 1
+#SBATCH -c 1
+#SBATCH -G V100:1
+#SBATCH -o out/%J_out
+#SBATCH -o out/%J_err
+#--SBATCH --qos=long
+#--SBATCH -C scratch2
+#~
+
+# prepare environment
+module load anaconda3/2021.05
+source activate myenv_arbor
+module load cuda
+
+# build necessary catalogue (also sets the environment to run custom Arbor installation)
+source build_catalogue_gpu
+
+benchmark () {
+	# name of the benchmark
+	name=$1
+
+	# script and arguments to be used for the benchmark
+	python_version="python3"
+	cmd="$python_version $2"
+	echo -e "Benchmark for:\n  $cmd"
+
+	# connectivity file
+	conn_file=$3
+
+	# number of trials to run
+	num_trials=$4
+
+	# sleep interval for memory tracking
+	slpintv=$5
+
+	# directory for storing the results
+	bmdir='benchmark_'$name
+
+	# create and enter directory for the results
+	if [[ -d $bmdir ]]; then
+		echo "Directory '$bmdir' exists -- quitting..."
+		return
+	else
+		mkdir $bmdir
+	fi
+	cd $bmdir
+
+	# copy program files
+	cp -r ../*.py .
+	cp ../custom-catalogue.so .
+	if [[ -n ${conn_file} ]]; then
+		cp ../${conn_file} .
+	fi
+
+	# save system information
+	uname -a > sys_info.log
+	echo "---" >> sys_info.log
+	lscpu >> sys_info.log
+	echo "---" >> sys_info.log
+	#dmidecode >> sys_info.log # requires sudo permission
+
+	# start tracking the memory
+	#screen -d -m /bin/bash ../track_allocated_memory_gwdg $python_version $slpintv
+
+	# use hyperfine for running the simulation trials and tracking the runtime
+	#screen -d -m hyperfine --runs ${num_trials} --export-json 'benchmark_hyperfine.json' "$cmd"
+	python3 ./arborNetworkConsolidation.py -s_desc='net CA200 10s-recall' -platform='GPU' -N_CA=200 -runtime=25 -recall='{"time_start": 20, "scheme": "ONEPULSE", "freq": 100, "N_stim": 25}' -config_file='../config_defaultnet-like.json' -output_period=10
+
+	cd ..
+}
+
+
+#benchmark "2N1S_basic_late" "./arborNetworkConsolidation.py -platform='GPU' -config_file='../config_smallnet2_basic_late.json' -sample_curr=1" "connections_smallnet2.txt" 10 "20s"
+#benchmark "CA200" "./arborNetworkConsolidation.py -s_desc='net CA200 8h-recall' -platform='GPU' -N_CA=200 -runtime=28820 -recall='{\"time_start\": 28810, \"scheme\": \"ONEPULSE\", \"freq\": 100, \"N_stim\": 25}' -config_file='../config_defaultnet-like.json' -output_period=10" "" 10 "15m"
+benchmark "CA200_10s-recall" "./arborNetworkConsolidation.py -s_desc='net CA200 10s-recall' -platform='GPU' -N_CA=200 -runtime=25 -recall='{\"time_start\": 20, \"scheme\": \"ONEPULSE\", \"freq\": 100, \"N_stim\": 25}' -config_file='../config_defaultnet-like.json' -output_period=10" "" 10 "2m"
+
+conda deactivate

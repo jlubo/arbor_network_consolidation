@@ -6,8 +6,8 @@ NEURON {
 	POINT_PROCESS expsyn_curr_early_late_plasticity
 	RANGE h_0, tau_syn, Ca_pre, Ca_post, theta_p, theta_d, theta_tag, R_mem, sigma_pl, h_init, z_init, area
 	NONSPECIFIC_CURRENT I
-	USEION sps_ WRITE sps_d : signal to trigger protein synthesis
-	USEION pc_ READ pc_d    : common pool of plasticity-related proteins
+	USEION pc_ READ pc_d : common pool of plasticity-related proteins
+	USEION sps_ WRITE sps_d : signal triggering protein synthesis
 }
 
 UNITS {
@@ -35,12 +35,13 @@ PARAMETER {
 	gamma_p     =  1645.6             : potentiation rate
 	gamma_d     =  313.1              : depression rate
 	t_Ca_delay  =  18.8       (ms)    : delay of postsynaptic calcium increase after presynaptic spike
+	f_int       =  0.1                : late-phase integration factor (in l/µmol)
 
 	h_init      =  4.20075    (mV)    : parameter to set state variable h
 	z_init      =  0                  : parameter to set state variable z
 
-	diam                              : CV diameter in µm (internal variable)
-	area                              : CV area of effect in µm^2 (internal variable in newer Arbor versions)
+	diam                              : CV diameter (internal variable, in µm)
+	area                              : CV area of effect (internal variable in newer Arbor versions,  in µm^2)
 }
 
 STATE {
@@ -53,7 +54,7 @@ STATE {
 ASSIGNED {
 	w (mV)          : total synaptic weight
 	h_diff_abs_prev : relative early-phase weight in the previous timestep (absolute value)
-	pc              : common pool of plasticity-related proteinss (mmol/l)
+	pc              : common pool of plasticity-related proteins (in µmol/l or mmol/l or ...)
 }
 
 INITIAL {
@@ -104,7 +105,7 @@ DERIVATIVE state {
 	h' = (- 0.1 * h_diff + gamma_p * (10 - h) * ltp_switch - gamma_d * h * ltd_switch + xi) / tau_h
 	
 	: Late-phase dynamics
-	z' = pc * ((1 - z) * step_right(h_diff - theta_tag) - (z + 0.5) * step_right(- h_diff - theta_tag)) / tau_z
+	z' = pc * f_int * ((1 - z) * step_right(h_diff - theta_tag) - (z + 0.5) * step_right(- h_diff - theta_tag)) / tau_z
 	
 	: Exponential decay of calcium concentration
 	Ca' = - Ca / tau_Ca

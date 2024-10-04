@@ -1,16 +1,26 @@
 #!/bin/bash
 
-# set environment variables required to run custom Arbor installation
-source set_arbor_env_dev
+# build necessary catalogue (also sets the environment to run custom Arbor installation)
+#source build_catalogue
+#source build_catalogue_simd
+#source build_catalogue_gpu
+source build_catalogue_gpu_testing
 
 # run specific tests with console output
-#pytest ./test_arborNetworkConsolidation.py::test_smallnet2_basic_early -s
-#pytest ./test_arborNetworkConsolidation.py::test_smallnet2_basic_late -s
-#pytest ./test_arborNetworkConsolidation.py::test_generated_connectivity -s
-#pytest ./test_arborNetworkConsolidation.py::test_smallnetX_onespike -s
-#pytest ./test_arborNetworkConsolidation.py::test_defn_max_activity -s
-#pytest ./test_arborNetworkConsolidation.py::test_smallnet3_schedules -s
+#python3 -m pytest ./test_arborNetworkConsolidation.py::test_smallnet2_basic_early -s
+#python3 -m pytest ./test_arborNetworkConsolidation.py::test_smallnet2_basic_late -s
+#python3 -m pytest ./test_arborNetworkConsolidation.py::test_generated_connectivity -s
+#python3 -m pytest ./test_arborNetworkConsolidation.py::test_smallnetX_onespike -s
+#python3 -m pytest ./test_arborNetworkConsolidation.py::test_defn_max_activity -s
+#python3.10 -m pytest ./test_arborNetworkConsolidation.py::test_smallnet3_schedules -s
+#python3 -m pytest ./test_arborNetworkConsolidation.py::test_defn_onespike -s
+#python3.10 -m pytest ./test_arborNetworkConsolidation.py::test_smallnetX_onespike -s
 
-# run all tests with line coverage output
-coverage run -m pytest ./test_arborNetworkConsolidation.py
-coverage report -m --omit=/usr/* > test_coverage.txt
+# run all tests with coverage (send output to terminal and file, using tee with unbuffer)
+#python3.10 -m coverage run -m pytest ./test_arborNetworkConsolidation.py --report-log=test_result.txt
+unbuffer python3.10 -m coverage run -m pytest ./test_arborNetworkConsolidation.py | tee -i test_result.txt
+#unbuffer python3.10 -m coverage run -m pytest ./test_arborNetworkConsolidation.py::test_smallnet3_schedules | tee -i test_result.txt
+#unbuffer python3.10 -m coverage run -m pytest ./test_arborNetworkConsolidation.py::test_smallnet2_basic_late | tee -i test_result.txt
+
+# line coverage output
+python3.10 -m coverage report -m --omit=/usr/*,**/lib/python*/* > test_coverage.txt

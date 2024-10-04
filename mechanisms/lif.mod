@@ -3,10 +3,10 @@
 
 NEURON {
 	SUFFIX lif
-	RANGE R_reset, R_leak, V_reset, V_rev, V_th, I_0, pc_init, i_factor, t_ref, theta_pro
+	RANGE R_reset, R_leak, V_reset, V_rev, V_th, I_0, pc_init, i_factor, t_ref, theta_pro, p_max
 	NONSPECIFIC_CURRENT i
-	USEION sps_ READ sps_d : signal to trigger protein synthesis
 	USEION pc_ WRITE pc_d : common pool of plasticity-related proteins
+	USEION sps_ READ sps_d : signal triggering protein synthesis
 }
 
 UNITS {
@@ -26,9 +26,9 @@ PARAMETER {
 	V_th      =  -55      (mV)   : threshold potential to be crossed for spiking
 	t_ref     =   2       (ms)   : refractory period
 
-	theta_pro =   2.10037 (mV)   : protein synthesis threshold
+	theta_pro =   2.10037        : protein synthesis threshold
 	tau_p     =   3600000 (ms)   : protein time constant
-	alpha     =   1              : protein synthesis rate (mmol/l)
+	p_max     =   1              : protein synthesis scaling constant (in µmol/l or mmol/l or ...)
 	
 	pc_init   =   0              : parameter to set state variable pc
 
@@ -42,14 +42,13 @@ PARAMETER {
 
 STATE {
 	refractory_counter
-	spsV : signal to trigger protein synthesis (particle amount; 1e-18 mol)
-	pc : common pool of plasticity-related proteins (mmol/l)
+	spsV : signal to trigger protein synthesis (particle amount; in 1e-18 mol if concentration is in mmol/l)
+	pc : common pool of plasticity-related proteins (in µmol/l or mmol/l or ...)
 }
 
 INITIAL {
 	:volume = area*diam/4 : = area*r/2 = 2*pi*r*h*r/2 = pi*r^2*h
 	refractory_counter = t_ref + 1 : start not refractory
-	v = V_rev : set the initial membrane potential
 	spsV = sps_d
 	pc = pc_init
 	pc_d = pc_init
@@ -90,6 +89,7 @@ DERIVATIVE state {
 		refractory_counter' = 1
 	}
 
-	pc' = ( -pc + alpha * step_right( spsV - theta_pro ) ) / tau_p
+	: compute protein concentration
+	pc' = ( -pc + p_max * step_right( spsV - theta_pro ) ) / tau_p
 }
 

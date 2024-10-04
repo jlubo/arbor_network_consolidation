@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# build necessary catalogue (also sets the environment to run custom Arbor installation)
+source build_catalogue
+
+# run the simulation with timesteps of 2e-4s
+python3.10 ./arborNetworkConsolidation.py -s_desc="defaultnet det max. activity, dt=0.2ms" -dt=0.2 -runtime=0.2 -config_file="config_defaultnet_det_max_activity.json"
+
+# run the simulation with timesteps of 2e-6s
+python3.10 ./arborNetworkConsolidation.py -s_desc="defaultnet det max. activity, dt=0.002ms" -dt=0.002 -runtime=0.2 -config_file="config_defaultnet_det_max_activity.json"
+

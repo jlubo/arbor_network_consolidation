@@ -49,8 +49,8 @@ def plotResults(config, data_stacked, timestamp, dataset, mem_dyn_data = False, 
 	axes[0].set_xlim(xmin=xlim_0, xmax=xlim_1, auto=xlim_auto)
 	
 	# plot data for plasticity dynamics
-	axes[0].plot(time, data_stacked[:,data_ptr]/h_0*100, color="#800000", label='h', marker='None', zorder=10)
-	axes[0].plot(time, (data_stacked[:,data_ptr+1]+1)*100, color="#1f77b4", label='z', marker='None', zorder=9)
+	axes[0].plot(time, data_stacked[:,data_ptr]/h_0*100, color="#800000", label='Early-phase', marker='None', zorder=10)
+	axes[0].plot(time, (data_stacked[:,data_ptr+1]/h_0+1)*100, color="#1f77b4", label='Late-phase', marker='None', zorder=9)
 	axes[0].axhline(y=(config["synapses"]["syn_exc_calcium_plasticity"]["theta_pro"]/h_0+1)*100, label='Protein thresh.', linestyle='-.', color="#dddddd", zorder=5)
 	axes[0].axhline(y=(config["synapses"]["syn_exc_calcium_plasticity"]["theta_tag"]/h_0+1)*100, label='Tag thresh.', linestyle='dashed', color="#dddddd", zorder=4)
 	
@@ -79,7 +79,7 @@ def plotResults(config, data_stacked, timestamp, dataset, mem_dyn_data = False, 
 
 	# set axis labels for calcium and protein plots
 	axes[num_rows-1].set_xlabel("Time (min)")
-	axes[num_rows-1].set_ylabel("Protein concentration (mM)")
+	axes[num_rows-1].set_ylabel("Protein concentration (µM)")
 	axes[num_rows-1].set_xlim(xmin=xlim_0, xmax=xlim_1, auto=xlim_auto)
 	#axes[num_rows-1].set_ylim(-0.1, 15.1)
 	axLtwin = axes[num_rows-1].twinx() # create twin axis for axes[num_rows-1]
@@ -87,9 +87,9 @@ def plotResults(config, data_stacked, timestamp, dataset, mem_dyn_data = False, 
 	#axLtwin.set_ylabel("SPS amount")
 	
 	# plot data for sps and protein dynamics
-	axLtwin.plot(time, data_stacked[:,data_ptr+2], color="#c8c896", label='Ca', marker='None', zorder=10)
-	#axLtwin.plot(time, data_stacked[:,data_ptr+3], color="#c8c896", label='spsV', marker='None', zorder=10)
-	axes[num_rows-1].plot(time, data_stacked[:,data_ptr+4], color="#008000", label='p', marker='None', zorder=9)
+	axLtwin.plot(time, data_stacked[:,data_ptr+2], color="#c8c896", label='Calcium', marker='None', zorder=10)
+	#axLtwin.plot(time, data_stacked[:,data_ptr+3], color="#c8c896", label='SPS', marker='None', zorder=10)
+	axes[num_rows-1].plot(time, data_stacked[:,data_ptr+4], color="#008000", label='Protein', marker='None', zorder=9)
 	axLtwin.axhline(y=config["synapses"]["syn_exc_calcium_plasticity"]["theta_p"], label='LTP thresh.', linestyle='dashed', color="#969664", zorder=8)
 	axLtwin.axhline(y=config["synapses"]["syn_exc_calcium_plasticity"]["theta_d"], label='LTD thresh.', linestyle='dashed', color="#969696", zorder=7)
 	

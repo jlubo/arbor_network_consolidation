@@ -34,15 +34,17 @@ def cyanText(text):
 # - return: timestamp in the format YY-MM-DD_HH-MM-SS
 def getTimestamp(refresh = False):
 	global timestamp_var # make this variable static
-		
+
 	try:
 		if timestamp_var and refresh == True:
+			time.sleep(2) # sleep for two seconds to ensure that a new timestamp is generated
 			timestamp_var = datetime.now() # forcibly refresh timestamp
 	except NameError:
+		time.sleep(2)
 		timestamp_var = datetime.now() # get timestamp for the first time
-		
+
 	return timestamp_var.strftime("%y-%m-%d_%H-%M-%S")
-	
+
 ###############################################################################
 # getFormattedTime
 # Returns a string indicating the hours, minutes, and seconds of a time given in seconds
@@ -103,13 +105,14 @@ def getDataPath(sim_description, file_description = "", refresh = False):
 	return os.path.join(out_path, timestamp + "_" + file_description)
 
 ###############################################################################
-# initLog
+# openLog
 # Initializes the global log file
 # - desc: description in the data path
-def initLog(desc):
+# - mode [optional]: mode for opening the file ("w": write, "a": append)
+def openLog(desc, mode = "w"):
 	global logf
 
-	logf = open(getDataPath(desc, "log.txt"), "w")
+	logf = open(getDataPath(desc, "log.txt"), mode)
 
 ###############################################################################
 # writeLog
@@ -140,6 +143,14 @@ def writeAddLog(*ostrs):
 	writeLog(*ostrs, prnt = False)
 
 ###############################################################################
+# flushLog
+# Flush/intermediate save the global log file
+def flushLog():
+	global logf
+
+	logf.flush()
+
+###############################################################################
 # closeLog
 # Close the global log file
 def closeLog():
@@ -150,8 +161,8 @@ def closeLog():
 ###############################################################################
 # getSynapseId
 # If provided, returns the synapse identifier for the corresponding neuron identifier in 'sample_gid_list', 
-# otherwise, returns the generic identifier
-# - sample_syn_list: the list of synapse indices (or value -1 to disbale reading)
+# otherwise, returns the generic identifier conveyed by 'sample_gid_list' of type int.
+# - sample_syn_list: the list of synapse indices (or value -1 to disable reading)
 # - index: pointing at the list element to be considered
 # - return: the synapse identifier
 def getSynapseId(sample_syn_list, index):

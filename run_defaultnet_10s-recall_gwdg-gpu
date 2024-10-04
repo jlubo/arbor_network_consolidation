@@ -1,0 +1,34 @@
+#!/bin/bash
+#SBATCH -J SC_10s-recall
+#SBATCH -t 48:00:00
+#SBATCH -p gpu
+#SBATCH -n 1
+#SBATCH -c 1
+#SBATCH -G V100:1
+#SBATCH -o out/%J_out
+#SBATCH -o out/%J_err
+#--SBATCH --qos=long
+#--SBATCH -C scratch2
+#~
+
+# prepare environment
+module load anaconda3/2021.05
+source activate myenv_arbor
+module load cuda
+
+# build necessary catalogue (also sets the environment to run custom Arbor installation)
+source build_catalogue_gpu
+
+# cell assembly size
+N_CA=$1
+
+# gather job information
+add_info="Job ID: ${SLURM_JOB_ID}; partition: ${SLURM_JOB_PARTITION}; num. nodes: ${SLURM_JOB_NUM_NODES}; num. CPUs: ${SLURM_JOB_CPUS_PER_NODE}"
+
+# run the simulation on CPU
+python3 ./arborNetworkConsolidation.py -s_desc="net CA${N_CA} 10s-recall ${SLURM_JOB_PARTITION} CPU $2" -add_info="${add_info}" -platform="CPU" -N_CA=${N_CA} -runtime=25 -recall='{"time_start": 20, "scheme": "ONEPULSE", "freq": 100, "N_stim": 25}' -config_file="config_defaultnet-like.json" -output_period=10 -plot=0
+
+# run the simulation on GPU
+python3 ./arborNetworkConsolidation.py -s_desc="net CA${N_CA} 10s-recall ${SLURM_JOB_PARTITION} GPU $2" -add_info="${add_info}" -platform="GPU" -N_CA=${N_CA} -runtime=25 -recall='{"time_start": 20, "scheme": "ONEPULSE", "freq": 100, "N_stim": 25}' -config_file="config_defaultnet-like.json" -output_period=10 -plot=0
+
+conda deactivate

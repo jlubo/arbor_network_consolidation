@@ -4,8 +4,8 @@ NEURON {
 	POINT_PROCESS expsyn_curr_early_late_plasticity_ff
 	RANGE h_0, theta_tag, h_init, z_init, area
 	NONSPECIFIC_CURRENT I
-	USEION sps_ WRITE sps_d : signal triggering protein synthesis
 	USEION pc_ READ pc_d : common pool of plasticity-related proteins
+	USEION sps_ WRITE sps_d : signal triggering protein synthesis
 }
 
 UNITS {
@@ -15,28 +15,28 @@ UNITS {
 }
 
 PARAMETER {
-	h_0         = 4.20075   (mV)   : initial weight
-	theta_tag   = 0.840149  (mV)   : tagging threshold
-	R_mem       = 10.0      (MOhm) : membrane resistance
-	sigma_pl    = 2.90436   (mV)   : standard deviation for plasticity fluctuations
+	: RANGE parameters
+	h_0         =  4.20075    (mV)   : initial weight
+	theta_tag   =  0.840149   (mV)   : tagging threshold
+	R_mem       =  10.0       (MOhm) : membrane resistance
 
-	tau_h       = 688400    (ms)   : early-phase time constant
-	tau_z       = 3600000   (ms)   : late-phase time constant
-	tau_p       = 3600000   (ms)   : protein time constant
-	alpha       = 1                : protein synthesis rate
+	: GLOBAL parameters
+	tau_h       =  688400     (ms)    : early-phase time constant
+	tau_z       =  3600000    (ms)    : late-phase time constant
+	f_int       =  0.1                : late-phase integration factor (in l/µmol)
 
-	h_init      = 4.20075   (mV)   : parameter to set state variable h
-	z_init      = 0                : parameter to set state variable z
+	h_init      =  4.20075    (mV)    : parameter to set state variable h
+	z_init      =  0                  : parameter to set state variable z
 
-	diam                           : CV diameter in µm (internal variable)
-	area                           : CV area of effect in µm^2 (internal variable in newer Arbor versions)
+	diam                              : CV diameter (internal variable, in µm)
+	area                              : CV area of effect (internal variable in newer Arbor versions,  in µm^2)
 }
 
 STATE {
 	h      (mV)     : early-phase weight
 	z               : late-phase weight
 	Ca              : calcium concentration
-	pc              : common pool of plasticity-related proteinss (mmol/l)
+	pc              : common pool of plasticity-related proteins (in µmol/l or mmol/l or ...)
 }
 
 ASSIGNED {
@@ -79,7 +79,7 @@ DERIVATIVE state {
 	h' = (- 0.1 * h_diff) / tau_h
 	
 	: Late-phase dynamics
-	z' = pc * ((1 - z) * step_right(h_diff - theta_tag) - (z + 0.5) * step_right(- h_diff - theta_tag)) / tau_z
+	z' = pc * f_int * ((1 - z) * step_right(h_diff - theta_tag) - (z + 0.5) * step_right(- h_diff - theta_tag)) / tau_z
 }
 
 NET_RECEIVE(weight) {

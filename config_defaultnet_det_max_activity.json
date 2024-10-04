@@ -1,31 +1,36 @@
 {
 	"simulation" : 
 	{
-		"description" : "Network of 2000 neurons, without background input, connectivity randomly generated",
-		"short_description" : "randomnet",
+		"description" : "Network with default connectivity, one neuron is stimulated with a strong current for maximal activity, plasticity is deterministic",
+		"short_description" : "defaultnet det max. activity",
 		"runtime" : 0.2,
 		"dt" : 0.2,
 		"dt_ff" : 50000,
 		"output_period" : 1,
 		"reduced_data" : 0,
-		"learn_protocol": { },
+		"learn_protocol": {
+			"time_start": 0,
+			"scheme": "FULL",
+			"freq": 1,
+			"N_stim" : 50000
+		},
 		"recall_protocol": { },
 		"bg_protocol": { },
-		"sample_gid_list": [ ],
-		"sample_syn_list": [ ],
+		"sample_gid_list": [0],
+		"sample_syn_list": [0],
 		"sample_curr": 0
 	},
 	"populations" :
 	{
 		"N_exc" : 1600,
 		"N_inh" : 400,
-		"N_CA" : 150,
+		"N_CA" : 1,
 		"w_ei" : 2.0, 
 		"w_ie" : 4.0,
 		"w_ii" : 4.0,
 		"p_c" : 0.1,
 		"p_r" : 0.5,
-		"conn_file": ""
+		"conn_file": "connections_default.txt"
 	},
 	"neuron" : 
 	{
@@ -48,17 +53,18 @@
 		{
 			"h_0" : 4.20075,
 			"t_Ca_delay" : 18.8,
-			"Ca_pre" : 0.6,
-			"Ca_post" : 0.1655,
-            "sigma_pl" : 2.90436,
+			"Ca_pre" : 1.0,
+			"Ca_post" : 0.2758,
+            "sigma_pl" : 0,
 			"theta_p" : 3.0,
 			"theta_d" : 1.2,
 			"theta_pro" : 2.10037,
 			"theta_tag" : 0.840149,
+			"p_max" : 10.0,
 			"tau_h" : 688400,
 			"tau_z" : 3600000,
 			"tau_Ca" : 48.8,
-			"tau_p" : 3600000			
+			"tau_p" : 3600000	
 		}
 	}
 }
