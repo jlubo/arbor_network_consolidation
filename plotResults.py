@@ -1,8 +1,8 @@
 #!/bin/python3
 
-# Plot functions for neuronal and synaptic variables as wells as spike raster plots
+# Plot functions for neuronal and synaptic variables as well as spike raster plots
 
-# Copyright 2021-2023 Jannik Luboeinski
+# Copyright 2021-2024 Jannik Luboeinski
 # License: Apache-2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 # Contact: mail[at]jlubo.net
 
@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import json
 import os
 from pathlib import Path
-from outputUtilities import getSynapseId
+from outputUtilities import getPresynapticId
 	
 #####################################
 # plotResults
@@ -22,10 +22,10 @@ from outputUtilities import getSynapseId
 # dataset: number of the dataset (usually one neuron/synapse pair) that shall be considered
 # mem_dyn_data [optional]: specifies if membrane potential and current shall be plotted
 # neuron [optional]: number of the neuron that shall be considered [default: 0]
-# synapse [optional]: number of the synapse that shall be considered [default: 0]
+# pre_neuron [optional]: number of the presynaptic neuron that shall be considered for the synapse [default: 0]
 # store_path [optional]: path to store resulting graphics file
 # figure_fmt [optional]: format of resulting graphics file
-def plotResults(config, data_stacked, timestamp, dataset, mem_dyn_data = False, neuron=0, synapse=0, store_path = ".", figure_fmt = 'png'):
+def plotResults(config, data_stacked, timestamp, dataset, mem_dyn_data = False, neuron=0, pre_neuron=0, store_path = ".", figure_fmt = 'png'):
 
 	h_0 = config["synapses"]["syn_exc_calcium_plasticity"]["h_0"] # reference value (initial value) of synaptic weight
 	time = data_stacked[:,0] / 60 / 1000 # time values, in min
@@ -100,7 +100,7 @@ def plotResults(config, data_stacked, timestamp, dataset, mem_dyn_data = False, 
 	#axes[num_rows-1].legend(loc="center left")
 
 	# save figure in given format (e.g., 'png' or 'svg')
-	fig.savefig(os.path.join(store_path, f"{timestamp}_traces_neuron_{neuron}_synapse_{synapse}.{figure_fmt}"))
+	fig.savefig(os.path.join(store_path, f"{timestamp}_traces_neuron_{neuron}_synapse_{pre_neuron}to{neuron}.{figure_fmt}"))
 	plt.close()
 
 #####################################
@@ -164,12 +164,12 @@ if __name__ == '__main__':
 			#plotResults(config, data_stacked, timestamp, 0, mem_dyn_data = True, figure_fmt = 'svg')
 
 			sample_gid_list = config['simulation']['sample_gid_list'] # list of the neurons that are to be probed (given by number/gid)
-			sample_syn_list = config['simulation']['sample_syn_list'] # list of the synapses that are to be probed (one synapse per neuron only, given by its internal number respective to a neuron in sample_gid); -1: none
+			sample_pre_list = config['simulation']['sample_pre_list'] # list of the presynaptic neurons for probing synapses (one value for each value in `sample_gid`; -1: no synapse probing)
 	
 			for i in range(len(sample_gid_list)):
 				sample_gid = sample_gid_list[i]
-				sample_syn = getSynapseId(sample_syn_list, i)
-				plotResults(config, data_stacked, timestamp, i, mem_dyn_data = True, neuron=sample_gid, synapse=sample_syn, figure_fmt = 'svg')
+				sample_presyn_gid = getPresynapticId(sample_pre_list, i)
+				plotResults(config, data_stacked, timestamp, i, mem_dyn_data = True, neuron=sample_gid, pre_neuron=sample_presyn_gid, figure_fmt = 'svg')
 	
 			if spikes_stacked.size != 0:
 				plotRaster(config, spikes_stacked, timestamp, figure_fmt = 'png')

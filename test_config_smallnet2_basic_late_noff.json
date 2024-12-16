@@ -9,7 +9,7 @@
 		"output_period" : 10,
 		"reduced_data" : 0,
 		"sample_gid_list" : [1],
-		"sample_syn_list" : [0],
+		"sample_pre_list" : [0],
 		"learn_protocol": {
 			"scheme": "RECT",
 			"time_start": 0,

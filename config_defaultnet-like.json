@@ -22,7 +22,7 @@
 			"sigma_WN" : 0.05
 		},
 		"sample_gid_list": [6, 68, 68, 1615],
-		"sample_syn_list": [-1, 0, 153, -1],
+		"sample_pre_list": [-1, 6, 1528, -1],
 		"sample_curr": 0
 	},
 	"populations" :

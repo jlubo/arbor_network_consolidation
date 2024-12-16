@@ -2,9 +2,10 @@
 
 # Arbor simulation of memory consolidation in recurrent spiking neural networks, consisting of leaky integrate-and-fire neurons that are
 # connected via current-based, plastic synapses (early phase based on calcium dynamics and late phase based on synaptic tagging and capture).
-# Intended to reproduce the results of Luboeinski and Tetzlaff, Commun. Biol., 2021 (https://doi.org/10.1038/s42003-021-01778-y).
+# Intended to reproduce the results of Luboeinski and Tetzlaff, Commun. Biol., 2021 (https://doi.org/10.1038/s42003-021-01778-y). For further
+# details, see https://doi.org/10.48550/arXiv.2411.16445.
 
-# Copyright 2021-2023 Jannik Luboeinski
+# Copyright 2021-2024 Jannik Luboeinski
 # License: Apache-2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 # Contact: mail[at]jlubo.net
 
@@ -21,7 +22,7 @@ import copy
 from outputUtilities import getTimestamp, getFormattedTime, getTimeDiff, \
                             setDataPathPrefix, getDataPath, \
                             openLog, writeLog, writeAddLog, flushLog, closeLog, \
-                            getSynapseId
+                            getPresynapticId
 
 setDataPathPrefix("data_")
 
@@ -286,7 +287,7 @@ class NetworkRecipe(arbor.recipe):
 		self.recall_prot = completeProt(config["simulation"]["recall_protocol"]) # protocol for recall stimulation as a dictionary with the keys "time_start" (starting time), "scheme" (scheme of pulses), and "freq" (stimulation frequency)
 		self.bg_prot = completeProt(config["simulation"]["bg_protocol"]) # protocol for background input as a dictionary with the keys "time_start" (starting time), "scheme" (scheme of pulses), "I_0" (mean), and "sigma_WN" (standard deviation)
 		self.sample_gid_list = config['simulation']['sample_gid_list'] # list of the neurons that are to be probed (given by number/gid)
-		self.sample_syn_list = config['simulation']['sample_syn_list'] # list of the synapses that are to be probed (one synapse per neuron only, given by its internal number respective to a neuron in sample_gid); -1: none
+		self.sample_pre_list = config['simulation']['sample_pre_list'] # list of the presynaptic neurons for probing synapses (one value for each value in `sample_gid`; -1: no synapse probing)
 		
 		if config['populations']['conn_file']: # if a connections file is specified, load the connectivity matrix from that file
 			self.conn_matrix = np.loadtxt(config['populations']['conn_file']).T
@@ -360,7 +361,10 @@ class NetworkRecipe(arbor.recipe):
 
 		# initialize decor
 		decor = arbor.decor()
-		decor.discretization(arbor.cv_policy("(max-extent 100)"))
+
+		# set CV policy
+		cv_policy = arbor.cv_policy("(max-extent 100)")
+		#decor.discretization(cv_policy) # since v0.10.1-dev-76120d1, this has to be done in `cable_cell()` (see below)
 
 		# neuronal dynamics
 		decor.set_property(Vm=self.neuron_config["V_init"]*U.mV, cm=c_mem)
@@ -390,7 +394,7 @@ class NetworkRecipe(arbor.recipe):
 		decor.set_ion("sps_", int_con=0*U.mM, diff=self.D) # signal to trigger protein synthesis
 		decor.set_ion("pc_", int_con=0*U.mM, diff=self.D) # proteins
 
-		# excitatory neurons
+		# excitatory (postsynaptic) neurons
 		if gid < self.N_exc:
 			# set neuronal state variables to values loaded from previous state of the network
 			if self.p is not None:
@@ -404,7 +408,7 @@ class NetworkRecipe(arbor.recipe):
 				writeAddLog("c_mem =", c_mem, "F/m^2")
 				writeAddLog("tau_mem =", tau_mem, "ms")
 		
-			# create plastic excitatory exponential synapse
+			# initialize plastic exponential mechanism for excitatory 
 			mech_expsyn_exc = arbor.mechanism(self.plasticity_mechanism)
 			
 			# set standard parameters
@@ -421,57 +425,60 @@ class NetworkRecipe(arbor.recipe):
 				mech_expsyn_exc.set('theta_d', self.syn_plasticity_config["theta_d"])
 				mech_expsyn_exc.set('sigma_pl', self.syn_plasticity_config["sigma_pl"])
 
-			exc_connections = np.array(self.conn_matrix[gid][0:self.N_exc], dtype=bool) # array of booleans indicating all incoming excitatory connections	
-			exc_pre_neurons = np.arange(self.N_exc)[exc_connections] # array of excitatory presynaptic neurons indicated by their gid
-			#inc_exc_connections = np.sum(self.conn_matrix[gid][0:self.N_exc], dtype=int) # number of incoming excitatory connections
-			inc_exc_connections = len(exc_pre_neurons)
+			exc_exc_connections = np.array(self.conn_matrix[gid][0:self.N_exc], dtype=bool) # array of booleans defining all incoming excitatory connections	
+			exc_exc_pre_neurons = np.arange(self.N_exc)[exc_exc_connections] # array of excitatory presynaptic neurons given by their gid
 
-			# place synapses; set synaptic state variables to values loaded from previous state of the network
-			for n in reversed(range(inc_exc_connections)): ### NOTE THE REVERSED ORDER (SEE BELOW) !!!
+			# place exc.->exc. synapses; set synaptic state variables to values loaded from previous state of the network
+			for presyn_gid in exc_exc_pre_neurons:
 				if (self.h is not None and self.z is not None):
-					mech_expsyn_exc.set('h_init', self.h[gid][exc_pre_neurons[n]])
-					mech_expsyn_exc.set('z_init', self.z[gid][exc_pre_neurons[n]])
+					mech_expsyn_exc.set('h_init', self.h[gid][presyn_gid])
+					mech_expsyn_exc.set('z_init', self.z[gid][presyn_gid])
 					if self.N_exc <= 4: # only for small networks
-						writeAddLog(f"Setting loaded values for synapse {exc_pre_neurons[n]}->{gid} (neuron {gid}, inc. " +
-						            f"synapse {n})..." +
-							        f"\n  h = {self.h[gid][exc_pre_neurons[n]]}" +
-							        f"\n  z = {self.z[gid][exc_pre_neurons[n]]}")
+						writeAddLog(f"Setting loaded values for synapse {presyn_gid}->{gid}...\n" +
+							        f"  h = {self.h[gid][presyn_gid]}\n" +
+							        f"  z = {self.z[gid][presyn_gid]}")
 				# add synapse
-				decor.place('"center"', arbor.synapse(mech_expsyn_exc), "syn_ee_calcium_plasticity") # place synapse at the center of the soma (because: point neuron)
-			#writeLog("Placed", inc_exc_connections, "incoming E->E synapses for neuron", gid)
-
-			# non-plastic inhibitory exponential synapse
+				decor.place('"center"', arbor.synapse(mech_expsyn_exc), f"syn_ee_calcium_plasticity_{presyn_gid}_{gid}") # place synapse at the center of the soma
+				                                                                                                         # (because of point neuron approximation)
+			# initialize non-plastic exponential mechanism for inhibitory synapse
 			mech_expsyn_inh = arbor.mechanism('expsyn_curr')
 			mech_expsyn_inh.set('w', -self.w_ie.value_as(U.mV) * self.h_0.value_as(U.mV))
 			mech_expsyn_inh.set('R_mem', R_leak.value_as(U.MOhm))
 			mech_expsyn_inh.set('tau', self.syn_config["tau_syn"])
 
-			inc_inh_connections = np.sum(self.conn_matrix[gid][self.N_exc:self.N_tot], dtype=int) # number of incoming inhibitory connections
-			for i in range(inc_inh_connections):
-				decor.place('"center"', arbor.synapse(mech_expsyn_inh), "syn_ie") # place synapse at the center of the soma (because: point neuron)
+			# place inh.->exc. synapses
+			inh_exc_connections = np.array(self.conn_matrix[gid][self.N_exc:self.N_tot], dtype=bool) # array of booleans defining all incoming inhibitory connections	
+			inh_exc_pre_neurons = np.arange(self.N_exc, self.N_tot)[inh_exc_connections] # array of inhibitory presynaptic neurons given by their gid
+			for presyn_gid in inh_exc_pre_neurons:
+				decor.place('"center"', arbor.synapse(mech_expsyn_inh), f"syn_ie_{presyn_gid}_{gid}") # place synapse at the center of the soma (because: point neuron)
 			
 			self.exc_neurons_counter += 1 # for testing
 			
-		# inhibitory neurons
+		# inhibitory (postsynaptic) neurons
 		else:			
-			# non-plastic excitatory exponential synapse
+			# initialize non-plastic exponential mechanism for excitatory synapse
 			mech_expsyn_exc = arbor.mechanism('expsyn_curr')
 			mech_expsyn_exc.set('w', self.w_ei.value_as(U.mV) * self.h_0.value_as(U.mV))
 			mech_expsyn_exc.set('R_mem', R_leak.value_as(U.MOhm))
 			mech_expsyn_exc.set('tau', self.syn_config["tau_syn"])
-			inc_exc_connections = np.sum(self.conn_matrix[gid][0:self.N_exc], dtype=int) # number of incoming excitatory connections
-			for i in range(inc_exc_connections):
-				decor.place('"center"', arbor.synapse(mech_expsyn_exc), "syn_ei") # place synapse at the center of the soma (because: point neuron)
+
+			# place exc.->inh. synapses
+			exc_inh_connections = np.array(self.conn_matrix[gid][0:self.N_exc], dtype=bool) # array of booleans defining all incoming excitatory connections	
+			exc_inh_pre_neurons = np.arange(self.N_exc)[exc_inh_connections] # array of inhibitory presynaptic neurons given by their gid
+			for presyn_gid in exc_inh_pre_neurons:
+				decor.place('"center"', arbor.synapse(mech_expsyn_exc), f"syn_ei_{presyn_gid}_{gid}") # place synapse at the center of the soma (because: point neuron)
 			
-			# non-plastic inhibitory exponential synapse
+			# initialize non-plastic exponential mechanism for inhibitory synapse
 			mech_expsyn_inh = arbor.mechanism('expsyn_curr')
 			mech_expsyn_inh.set('w', -self.w_ii.value_as(U.mV) * self.h_0.value_as(U.mV))
 			mech_expsyn_inh.set('R_mem', R_leak.value_as(U.MOhm))
 			mech_expsyn_inh.set('tau', self.syn_config["tau_syn"])
 
-			inc_inh_connections = np.sum(self.conn_matrix[gid][self.N_exc:self.N_tot], dtype=int) # number of incoming inhibitory connections
-			for i in range(inc_inh_connections):
-				decor.place('"center"', arbor.synapse(mech_expsyn_inh), "syn_ii") # place synapse at the center of the soma (because: point neuron)
+			# place inh.->inh. synapses
+			inh_inh_connections = np.array(self.conn_matrix[gid][self.N_exc:self.N_tot], dtype=bool) # array of booleans defining all incoming inhibitory connections	
+			inh_inh_pre_neurons = np.arange(self.N_exc, self.N_tot)[inh_inh_connections] # array of inhibitory presynaptic neurons given by their gid
+			for presyn_gid in inh_inh_pre_neurons:
+				decor.place('"center"', arbor.synapse(mech_expsyn_inh), f"syn_ii_{presyn_gid}_{gid}") # place synapse at the center of the soma (because: point neuron)
 			
 			self.inh_neurons_counter += 1 # for testing
 			
@@ -522,7 +529,7 @@ class NetworkRecipe(arbor.recipe):
 		# paint neuron mechanism
 		decor.paint('(all)', arbor.density(mech_neuron))
 			
-		return arbor.cable_cell(tree, decor, labels)
+		return arbor.cable_cell(tree, decor, labels, discretization=cv_policy)
 		
 	# connections_on
 	# Defines the list of incoming synaptic connections to the neuron given by gid
@@ -556,28 +563,28 @@ class NetworkRecipe(arbor.recipe):
 		#d1 = self.syn_plasticity_config["t_Ca_delay"] # delay time of the calcium increase in ms (only for plastic synapses)
 		d1 = max(self.adap_dt.value_as(U.ms), self.syn_plasticity_config["t_Ca_delay"])*U.ms # delay time of the calcium increase in ms (only for plastic synapses)		
 		
-		# excitatory neurons
+		# excitatory (postsynaptic) neurons
 		if gid < self.N_exc:
 								
 			# incoming excitatory synapses
 			for src in exc_pre_neurons:
-				#connections_list.append(arbor.connection((src, "spike_detector"), ("syn_ee_calcium_plasticity", rr), 1, d0)) # for postsynaptic potentials
-				connections_list.append(arbor.connection((src, "spike_detector"), ("syn_ee_calcium_plasticity", rr_halt), 1, d0)) # for postsynaptic potentials
-				connections_list.append(arbor.connection((src, "spike_detector"), ("syn_ee_calcium_plasticity", rr), -1, d1)) # for plasticity-related calcium dynamics
-			
+				syn_target = f"syn_ee_calcium_plasticity_{src}_{gid}"
+				connections_list.append(arbor.connection((src, "spike_detector"), (syn_target, rr_halt), 1, d0)) # for postsynaptic potentials
+				connections_list.append(arbor.connection((src, "spike_detector"), (syn_target, rr), -1, d1)) # for plasticity-related calcium dynamics
+
 			# incoming inhibitory synapses
 			for src in inh_pre_neurons:
-				connections_list.append(arbor.connection((src,"spike_detector"), ("syn_ie", rr), 1, d0))
+				connections_list.append(arbor.connection((src,"spike_detector"), (f"syn_ie_{src}_{gid}", rr), 1, d0))
 				  
-		# inhibitory neurons
+		# inhibitory (postsynaptic) neurons
 		else:
 			# incoming excitatory synapses
 			for src in exc_pre_neurons:
-				connections_list.append(arbor.connection((src,"spike_detector"), ("syn_ei", rr), 1, d0))
+				connections_list.append(arbor.connection((src,"spike_detector"), (f"syn_ei_{src}_{gid}", rr), 1, d0))
 				
 			# incoming inhibitory synapses
 			for src in inh_pre_neurons:
-				connections_list.append(arbor.connection((src,"spike_detector"), ("syn_ii", rr), 1, d0))
+				connections_list.append(arbor.connection((src,"spike_detector"), (f"syn_ii_{src}_{gid}", rr), 1, d0))
 		
 		if self.N_exc <= 4: # only for small networks
 			writeAddLog(f"Setting connections for gid = {gid}...")
@@ -675,7 +682,7 @@ class NetworkRecipe(arbor.recipe):
 		return self.max_num_latest_state_probes
 
 	# probes
-	# Sets the probes to measure neuronal and synaptic state -- WARNING: the indexing here is (for CPU) reversed to that used by 'sim.sample((gid, index), sched)'
+	# Sets the probes to measure neuronal and synaptic state
 	# - gid: global identifier of the cell
 	# - return: the probes on the given cell
 	def probes(self, gid):
@@ -687,13 +694,12 @@ class NetworkRecipe(arbor.recipe):
 		latest_state_probes = []
 		if self.store_latest_state and gid < self.N_exc:
 			latest_state_probes.extend([arbor.cable_probe_density_state('"center"', self.neuron_config["mechanism"], "pc", "tag_pc_latest")])
-			num_sample_syn = 0
-			for j in range(self.N_exc):
-				if self.conn_matrix[gid][j]:
-					latest_state_probes.extend([arbor.cable_probe_point_state(num_sample_syn, self.plasticity_mechanism, "h", f"tag_h_latest_{num_sample_syn}"),
-												arbor.cable_probe_point_state(num_sample_syn, self.plasticity_mechanism, "z", f"tag_z_latest_{num_sample_syn}")])
-												#arbor.cable_probe_point_state(num_sample_syn, self.plasticity_mechanism, "pc", f"tag_pc_{num_sample_syn}")])
-					num_sample_syn += 1
+			for presyn_gid in range(self.N_exc):
+				if self.conn_matrix[gid][presyn_gid]:
+					syn_target = f"syn_ee_calcium_plasticity_{presyn_gid}_{gid}"
+					latest_state_probes.extend([arbor.cable_probe_point_state(syn_target, self.plasticity_mechanism, "h", f"tag_h_latest_{presyn_gid}"),
+				                                arbor.cable_probe_point_state(syn_target, self.plasticity_mechanism, "z", f"tag_z_latest_{presyn_gid}")])
+				                                #arbor.cable_probe_point_state(syn_target, self.plasticity_mechanism, "pc", f"tag_pc_{presyn_gid}")])
 			self.set_max_num_latest_state_probes(len(latest_state_probes))
 
 		# loop over all synapses whose traces are to be probed (for each 'gid' in 'sample_gid_list')
@@ -709,23 +715,24 @@ class NetworkRecipe(arbor.recipe):
 										arbor.cable_probe_point_state_cell("ou_input", "I_ou", "tag_I_ou")])
 				
 				# gets the synapse identifier for the corresponding neuron identifier in 'sample_gid_list'
-				sample_syn = getSynapseId(self.sample_syn_list, i)
+				presyn_gid = getPresynapticId(self.sample_pre_list, i)
 
 				# for synapses to be probed: additionally get synaptic calcium concentration, early- and late-phase weight, and concentration of PRPs
-				if sample_syn >= 0:
+				if presyn_gid >= 0:
+					syn_target = f"syn_ee_calcium_plasticity_{presyn_gid}_{gid}"
 
-					trace_probes.extend([arbor.cable_probe_point_state(sample_syn, self.plasticity_mechanism, "Ca", f"tag_Ca_{sample_syn}"),
-								         arbor.cable_probe_point_state(sample_syn, self.plasticity_mechanism, "h", f"tag_h_{sample_syn}"),
-								         arbor.cable_probe_point_state(sample_syn, self.plasticity_mechanism, "z", f"tag_z_{sample_syn}"),
-					                     #arbor.cable_probe_ion_diff_concentration('"center"', "sps_", f"tag_sps__{sample_syn}"),
-					                     #arbor.cable_probe_point_state(sample_syn, self.plasticity_mechanism, "sps", f"tag_sps_{sample_syn}"),
-										 arbor.cable_probe_density_state('"center"', self.neuron_config["mechanism"], "spsV", f"tag_spsV_{sample_syn}"),
-					                     #arbor.cable_probe_point_state(sample_syn, self.plasticity_mechanism, "pc", f"tag_pc_{sample_syn}"),
-										 #arbor.cable_probe_ion_diff_concentration('"center"', "pc_", f"tag_pc__{sample_syn}"),
-					                     arbor.cable_probe_density_state('"center"', self.neuron_config["mechanism"], "pc", f"tag_pc__{sample_syn}")])
+					trace_probes.extend([arbor.cable_probe_point_state(syn_target, self.plasticity_mechanism, "Ca", f"tag_Ca_{presyn_gid}"),
+								         arbor.cable_probe_point_state(syn_target, self.plasticity_mechanism, "h", f"tag_h_{presyn_gid}"),
+								         arbor.cable_probe_point_state(syn_target, self.plasticity_mechanism, "z", f"tag_z_{presyn_gid}"),
+					                     #arbor.cable_probe_ion_diff_concentration('"center"', "sps_", f"tag_sps__{presyn_gid}"),
+					                     #arbor.cable_probe_point_state(syn_target, self.plasticity_mechanism, "sps", f"tag_sps_{presyn_gid}"),
+										 arbor.cable_probe_density_state('"center"', self.neuron_config["mechanism"], "spsV", f"tag_spsV_{presyn_gid}"),
+					                     #arbor.cable_probe_point_state(syn_target, self.plasticity_mechanism, "pc", f"tag_pc_{presyn_gid}"),
+										 #arbor.cable_probe_ion_diff_concentration('"center"', "pc_", f"tag_pc__{presyn_gid}"),
+					                     arbor.cable_probe_density_state('"center"', self.neuron_config["mechanism"], "pc", f"tag_pc__{presyn_gid}")])
 
 				if self.N_exc <= 4: # only for small networks
-					writeAddLog(f"  set probes for sample_syn = {sample_syn}")
+					writeAddLog(f"  set probes for synapse {presyn_gid}->{gid}")
 	
 			self.set_max_num_trace_probes(len(trace_probes))
 			all_trace_probes.extend(trace_probes)
@@ -754,7 +761,7 @@ def runSimPhase(phase, recipe, config, rseed, t_final_red, adap_dt, platform, pl
 	# initialize
 	s_desc = config['simulation']['short_description'] # short description of the simulation, including hashtags for benchmarking
 	sample_gid_list = config['simulation']['sample_gid_list'] # list of the neurons that are to be probed (given by number/gid)
-	sample_syn_list = config['simulation']['sample_syn_list'] # list of the synapses that are to be probed (one synapse per neuron only, given by its internal number respective to a neuron in sample_gid); -1: none
+	sample_pre_list = config['simulation']['sample_pre_list'] # list of the presynaptic neurons for probing synapses (one value for each value in `sample_gid`; -1: no synapse probing)
 	sample_curr = config['simulation']['sample_curr'] # pointer to current data (0: total membrane current, 1: OU stimulation current, 2: OU background noise current)
 	output_period = config['simulation']['output_period'] # sampling size in timesteps (every "output_period-th" timestep, data will be recorded for plotting)
 	loc = 0 # for single-compartment neurons, there is only one location
@@ -815,7 +822,7 @@ def runSimPhase(phase, recipe, config, rseed, t_final_red, adap_dt, platform, pl
 	#sampl_policy = arbor.sampling_policy.lax # use exact policy, just to be safe!?
 		
 	###############################################
-	# set handles -- WARNING: the indexing here is (for CPU) reversed to that used by the probe setting mechanism !!!
+	# set handles
 	handle_mem, handle_tot_curr, handle_stim_curr, handle_Ca_specific, handle_h_specific, handle_z_specific, handle_sps_specific, handle_p_specific = [], [], [], [], [], [], [], []
 	handle_h_syn_latest, handle_z_syn_latest, handle_p_comp_latest = [], [], []
 	synapse_mapping = [[] for i in range(recipe.N_exc)] # list that contains a list of matrix indices indicating the presynaptic neurons for each (excitatory) neuron -> sparse representation
@@ -828,36 +835,35 @@ def runSimPhase(phase, recipe, config, rseed, t_final_red, adap_dt, platform, pl
 
 			handle_p_comp_latest.append(sim.sample(i, "tag_pc_latest", final_sched)) # neuronal protein amount
 			if recipe.N_exc <= 4: # only for small networks
-				writeAddLog(f"Setting handles for latest state of neuron {i}..." +
-				            f"\n  handle(p) = {handle_p_comp_latest[-1]} " + str(sim.probe_metadata(i, "tag_pc_latest")))
+				writeAddLog(f"Setting handles for latest state of neuron {i}...\n" +
+				            f"  handle(p) = {handle_p_comp_latest[-1]} " + str(sim.probe_metadata(i, "tag_pc_latest")))
 
-			for j in reversed(range(recipe.N_exc)): ### NOTE THE REVERSED ORDER !!!
+			for j in range(recipe.N_exc):
 
 				# check if synapse is supposed to exist
 				if recipe.conn_matrix[i][j]:
 
-					num_sample_syn = len(synapse_mapping[i]) # number of synapses that have so far been found for postsynaptic neuron 'i'
+					#num_sample_syn = len(synapse_mapping[i]) # number of synapses that have so far been found for postsynaptic neuron 'i'
 
-					handle_h_syn_latest.append(sim.sample(i, f"tag_h_latest_{num_sample_syn}", final_sched)) # early-phase weight
-					handle_z_syn_latest.append(sim.sample(i, f"tag_z_latest_{num_sample_syn}", final_sched)) # late-phase weight
+					handle_h_syn_latest.append(sim.sample(i, f"tag_h_latest_{j}", final_sched)) # early-phase weight
+					handle_z_syn_latest.append(sim.sample(i, f"tag_z_latest_{j}", final_sched)) # late-phase weight
 					if recipe.N_exc <= 4: # only for small networks
-						writeAddLog(f"Setting handles for latest state of synapse {j}->{i} (neuron {i}, inc. " +
-						            f"synapse {num_sample_syn})..." +
-						            f"\n  handle(h) = {handle_h_syn_latest[-1]} " + str(sim.probe_metadata(i, f"tag_h_latest_{num_sample_syn}")) +
-						            f"\n  handle(z) = {handle_z_syn_latest[-1]} " + str(sim.probe_metadata(i, f"tag_z_latest_{num_sample_syn}")))
+						writeAddLog(f"Setting handles for latest state of synapse {j}->{i}...\n" +
+						            f"  handle(h) = {handle_h_syn_latest[-1]} " + str(sim.probe_metadata(i, f"tag_h_latest_{j}")) + "\n" +
+						            f"  handle(z) = {handle_z_syn_latest[-1]} " + str(sim.probe_metadata(i, f"tag_z_latest_{j}")))
 
 					synapse_mapping[i].append(j)
 
-	# loop over elements in 'sample_gid_list' (and thereby, 'sample_syn_list') to set handles for specific sampling
+	# loop over elements in 'sample_gid_list' (and thereby, 'sample_pre_list') to set handles for specific sampling
 	for i in range(len(sample_gid_list)):
 
 		# retrieve the current neuron index
 		sample_gid = sample_gid_list[i]
 
 		# retrieve the synapse index by the corresponding neuron identifier
-		sample_syn = getSynapseId(sample_syn_list, i)
+		sample_presyn_gid = getPresynapticId(sample_pre_list, i)
 		writeAddLog(f"Setting handles for specific sample #{i} (neuron {sample_gid}, " +
-		            f"synapse {sample_syn})...")
+		            f"synapse {sample_presyn_gid}->{sample_gid})...")
 
 		# for all neurons: get membrane potential and current(s)
 		handle_mem.append(sim.sample(sample_gid, "tag_v", reg_sched)) # membrane potential
@@ -868,17 +874,17 @@ def runSimPhase(phase, recipe, config, rseed, t_final_red, adap_dt, platform, pl
 	                f"\n  handle(I_stim) = {handle_stim_curr[-1]} " + str(sim.probe_metadata(sample_gid, "tag_I_ou")))
 
 		# for excitatory neurons with synapses to be probed: get synapse data
-		if sample_syn >= 0: # synapse probes exist only if this condition is true
-			handle_Ca_specific.append(sim.sample(sample_gid, f'tag_Ca_{sample_syn}', reg_sched)) # calcium amount
-			handle_h_specific.append(sim.sample(sample_gid, f'tag_h_{sample_syn}', reg_sched)) # early-phase weight
-			handle_z_specific.append(sim.sample(sample_gid, f'tag_z_{sample_syn}', reg_sched)) # late-phase weight
-			handle_sps_specific.append(sim.sample(sample_gid, f'tag_spsV_{sample_syn}', reg_sched)) # signal triggering protein synthesis
-			handle_p_specific.append(sim.sample(sample_gid, f'tag_pc__{sample_syn}', reg_sched)) # neuronal protein amount
-			writeAddLog(f"  handle(Ca) = {handle_Ca_specific[-1]} " + str(sim.probe_metadata(sample_gid, f"tag_Ca_{sample_syn}")) +
-			            f"\n  handle(h) = {handle_h_specific[-1]} " + str(sim.probe_metadata(sample_gid, f"tag_h_{sample_syn}")) +
-			            f"\n  handle(z) = {handle_z_specific[-1]} " + str(sim.probe_metadata(sample_gid, f"tag_z_{sample_syn}")) +
-			            f"\n  handle(sps) = {handle_sps_specific[-1]} " + str(sim.probe_metadata(sample_gid, f"tag_spsV_{sample_syn}")) +
-			            f"\n  handle(p) = {handle_p_specific[-1]} " + str(sim.probe_metadata(sample_gid, f"tag_pc__{sample_syn}")))
+		if sample_presyn_gid >= 0: # synapse probes exist only if this condition is true
+			handle_Ca_specific.append(sim.sample(sample_gid, f'tag_Ca_{sample_presyn_gid}', reg_sched)) # calcium amount
+			handle_h_specific.append(sim.sample(sample_gid, f'tag_h_{sample_presyn_gid}', reg_sched)) # early-phase weight
+			handle_z_specific.append(sim.sample(sample_gid, f'tag_z_{sample_presyn_gid}', reg_sched)) # late-phase weight
+			handle_sps_specific.append(sim.sample(sample_gid, f'tag_spsV_{sample_presyn_gid}', reg_sched)) # signal triggering protein synthesis
+			handle_p_specific.append(sim.sample(sample_gid, f'tag_pc__{sample_presyn_gid}', reg_sched)) # neuronal protein amount
+			writeAddLog(f"  handle(Ca) = {handle_Ca_specific[-1]} " + str(sim.probe_metadata(sample_gid, f"tag_Ca_{sample_presyn_gid}")) +
+			            f"\n  handle(h) = {handle_h_specific[-1]} " + str(sim.probe_metadata(sample_gid, f"tag_h_{sample_presyn_gid}")) +
+			            f"\n  handle(z) = {handle_z_specific[-1]} " + str(sim.probe_metadata(sample_gid, f"tag_z_{sample_presyn_gid}")) +
+			            f"\n  handle(sps) = {handle_sps_specific[-1]} " + str(sim.probe_metadata(sample_gid, f"tag_spsV_{sample_presyn_gid}")) +
+			            f"\n  handle(p) = {handle_p_specific[-1]} " + str(sim.probe_metadata(sample_gid, f"tag_pc__{sample_presyn_gid}")))
 
 	writeAddLog("Number of set handles:" +
 	            f"\n  len(handle_h_syn_latest) = {len(handle_h_syn_latest)}" +
@@ -939,7 +945,7 @@ def runSimPhase(phase, recipe, config, rseed, t_final_red, adap_dt, platform, pl
 			for num_sample_syn in range(len(synapse_mapping[i])):
 				j = synapse_mapping[i][num_sample_syn]
 				if recipe.N_exc <= 4: # only for small networks
-					writeAddLog(f"Getting latest state of synapse {j}->{i} (neuron {i}, incoming synapse {num_sample_syn})...")
+					writeAddLog(f"Getting latest state of synapse {j}->{i}...")
 				if recipe.conn_matrix[i][j]:
 					h_samples = sim.samples(handle_h_syn_latest[n])
 					z_samples = sim.samples(handle_z_syn_latest[n])
@@ -958,7 +964,7 @@ def runSimPhase(phase, recipe, config, rseed, t_final_red, adap_dt, platform, pl
 
 					n += 1
 				else:
-					raise Exception(f"Entry with i = {i}, j = {j} not found in connectivity matrix.")
+					raise Exception(f"Entry with i={i}, j={j} not found in connectivity matrix.")
 
 		np.savetxt(os.path.join(state_path, "h_synapses.txt"), h_synapses.T, fmt="%.4f")
 		np.savetxt(os.path.join(state_path, "z_synapses.txt"), z_synapses.T, fmt="%.4f")
@@ -974,14 +980,15 @@ def runSimPhase(phase, recipe, config, rseed, t_final_red, adap_dt, platform, pl
 	data_z, data_sps, data_p = [], [], []
 	dimin = 0
 
-	# loop over elements in 'sample_gid_list' (and thereby, 'sample_syn_list') to get traces
+	# loop over elements in 'sample_gid_list' (and thereby, 'sample_pre_list') to get traces
 	for i in range(len(sample_gid_list)):
 		# retrieve the current neuron index
 		sample_gid = sample_gid_list[i]
 
-		# retrieve the synapse index by the corresponding neuron identifier
-		sample_syn = getSynapseId(sample_syn_list, i)
-		writeLog(f"Getting traces of sample #{i} (neuron {sample_gid}, synapse {sample_syn})...")
+		# retrieve the presynaptic neuron identifier by the corresponding index
+		sample_presyn_gid = getPresynapticId(sample_pre_list, i)
+		writeLog(f"Getting traces of sample #{i} (neuron {sample_gid}, " +
+		         f"synapse {sample_presyn_gid}->{sample_gid})...")
 
 		# get neuronal data
 		data, _ = sim.samples(handle_mem[i])[loc]
@@ -1004,7 +1011,7 @@ def runSimPhase(phase, recipe, config, rseed, t_final_red, adap_dt, platform, pl
 			writeAddLog(f"  Read from handle {handle_tot_curr[i]} (I_tot, {bool(sim.samples(handle_tot_curr[i]))})")
 
 		# get synaptic data
-		if sample_syn >= 0: # synapse handles exist only if this condition is true
+		if sample_presyn_gid >= 0: # synapse handles exist only if this condition is true
 			if len(sim.samples(handle_Ca_specific[i-dimin])) > 0: 
 				data, _ = sim.samples(handle_Ca_specific[i-dimin])[loc]
 				data_Ca.append(data[:, 1])
@@ -1077,16 +1084,16 @@ def arborNetworkConsolidation(config, add_info = None, platform = "", plotting =
 	std_dt = config['simulation']['dt']*U.ms # duration of one timestep for rich computation in ms
 	ff_dt = config['simulation']['dt_ff']*U.ms # duration of one timestep for fast-forward computation in ms
 	sample_gid_list = config['simulation']['sample_gid_list'] # list of the neurons that are to be probed (given by number/gid)
-	sample_syn_list = config['simulation']['sample_syn_list'] # list of the synapses that are to be probed (one synapse per neuron only, given by its internal number respective to a neuron in sample_gid); -1: none
+	sample_pre_list = config['simulation']['sample_pre_list'] # list of the presynaptic neurons for probing synapses (one value for each value in `sample_gid`; -1: no synapse probing)
 	learn_prot = completeProt(config['simulation']['learn_protocol']) # protocol for learning stimulation as a dictionary with the keys "time" (starting time), "scheme" (scheme of pulses), and "freq" (stimulation frequency)
 	recall_prot = completeProt(config['simulation']['recall_protocol']) # protocol for recall stimulation as a dictionary with the keys "time" (starting time), "scheme" (scheme of pulses), and "freq" (stimulation frequency)
 	bg_prot = completeProt(config['simulation']['bg_protocol']) # protocol for background input as a dictionary with the keys "time" (starting time), "scheme" (scheme of pulses), "I_0" (mean), and "sigma_WN" (standard deviation)
 	rich_comp_window = 5000*U.ms # time window of rich computation to consider before and after learning and recall stimulation
 
-	if len(sample_gid_list) != len(sample_syn_list) and len(sample_syn_list) > 1:
+	if len(sample_gid_list) != len(sample_pre_list) and len(sample_pre_list) > 1:
 		raise ValueError("List of sample synapses has to either have the same length as the list of sample neurons, or to contain maximally one element.")
-	elif len(sample_syn_list) == 0:
-		sample_syn_list.append(-1)
+	elif len(sample_pre_list) == 0:
+		sample_pre_list.append(-1)
 
 	#####################################
 	# initialize structures to store the data
@@ -1586,23 +1593,24 @@ def arborNetworkConsolidation(config, add_info = None, platform = "", plotting =
 	data_header = "Time, "
 	data_stacked = times # start with times, then add the data columns in the right order	
 
-	# loop over elements in 'sample_gid_list' (and thereby, 'sample_syn_list') to assemble the retrieved data
+	# loop over elements in 'sample_gid_list' (and thereby, 'sample_pre_list') to assemble the retrieved data
 	for i in range(len(sample_gid_list)):
 		# retrieve the current neuron index
 		sample_gid = sample_gid_list[i]
 
-		# retrieve the synapse index by the corresponding neuron identifier
-		sample_syn = getSynapseId(sample_syn_list, i)
+		# retrieve the presynaptic neuron identifier by the corresponding index
+		sample_presyn_gid = getPresynapticId(sample_pre_list, i)
 
 		# retrieve the synapse index by finding out how often the current neuron index has occurred already 
-		sample_syn_alt = sample_gid_list[:i].count(sample_gid)
+		#sample_syn_alt = sample_gid_list[:i].count(sample_gid)
 
-		writeAddLog(f"Assembling data for sample #{i} " + 
-		            f"(sample_gid = {sample_gid}, sample_syn = {sample_syn}, sample_syn_alt = {sample_syn_alt})...")
+		writeAddLog(f"Assembling data for sample #{i}" +
+		            f" (gid = {sample_gid}" +
+		            f", presyn_gid = {sample_presyn_gid})...")
 
 		# prepare strings for header output
 		neur = str(sample_gid)
-		syn = str(sample_syn)
+		pre_neur = str(sample_presyn_gid)
 
 		datacol_mem = np.hstack((data_mem1[i], data_mem2[i], data_mem3[i]))
 		datacol_curr = np.hstack((data_curr1[i], data_curr2[i], data_curr3[i]))
@@ -1619,8 +1627,8 @@ def arborNetworkConsolidation(config, add_info = None, platform = "", plotting =
 		data_stacked = np.column_stack([data_stacked,
 		                                datacol_mem, datacol_curr])
 
-		data_header += f"h({neur},,{syn}), z({neur},,{syn}), Ca({neur},,{syn}), " + \
-				       f"spsV({neur},,{syn}), p^C({neur},,{syn}), "
+		data_header += f"h({pre_neur},{neur}), z({pre_neur},{neur}), Ca({pre_neur},{neur}), " + \
+				       f"spsV({pre_neur},{neur}), p^C({pre_neur},{neur}), "
 		data_stacked = np.column_stack([data_stacked,
 				                        datacol_h, datacol_z, datacol_Ca, datacol_spsV, datacol_p])
 
@@ -1638,14 +1646,14 @@ def arborNetworkConsolidation(config, add_info = None, platform = "", plotting =
 			# retrieve the current neuron index
 			sample_gid = sample_gid_list[i]
 
-			# retrieve the synapse index by the corresponding neuron identifier
-			sample_syn = getSynapseId(sample_syn_list, i)
+			# retrieve the presynaptic neuron identifier by the corresponding index
+			sample_presyn_gid = getPresynapticId(sample_pre_list, i)
 
 			# retrieve the synapse index by finding out how often the current neuron index has occurred already 
 			#sample_syn_alt = sample_gid_list[:i].count(sample_gid)
 
 			# call the plot function for neuron and synapse traces, depending on whether reduced or all data shall be plotted
-			plotResults(config, data_stacked, getTimestamp(), i, mem_dyn_data = True, neuron=sample_gid, synapse=sample_syn, store_path=getDataPath(s_desc), figure_fmt = 'svg')
+			plotResults(config, data_stacked, getTimestamp(), i, mem_dyn_data = True, neuron=sample_gid, pre_neuron=sample_presyn_gid, store_path=getDataPath(s_desc), figure_fmt = 'svg')
 		
 		# call the plot function for spike raster	
 		plotRaster(config, spike_times.T, getTimestamp(), store_path=getDataPath(s_desc), figure_fmt = 'png')
@@ -1683,8 +1691,8 @@ if __name__ == '__main__':
 	parser.add_argument('-N_CA', type=int, help="number of neurons in the cell assembly")
 	parser.add_argument('-learn', type=str, help="protocol for learning stimulation")
 	parser.add_argument('-recall', type=str, help="protocol for recall stimulation")
-	parser.add_argument('-sample_gid', type=int, nargs='+', help="numbers of the neurons that shall be probed")
-	parser.add_argument('-sample_syn', type=int, nargs='+', help="relative numbers of the synapses that shall be probed")
+	parser.add_argument('-sample_gid', type=int, nargs='+', help="identifiers of the neurons that shall be probed")
+	parser.add_argument('-sample_presyn_gid', type=int, nargs='+', help="identifiers of the presynaptic neurons for synapse probes")
 	parser.add_argument('-sample_curr', type=int, help="current that shall be probed")
 	parser.add_argument('-w_ei', type=float, help="excitatory to inhibitory coupling strength in units of h_0")
 	parser.add_argument('-w_ie', type=float, help="inhibitory to excitatory coupling strength in units of h_0")
@@ -1703,7 +1711,7 @@ if __name__ == '__main__':
 	if (args.learn is not None): config['simulation']['learn_protocol'] = json.loads(args.learn) # convert "learn" argument string into dictionary
 	if (args.recall is not None): config['simulation']['recall_protocol'] = json.loads(args.recall) # convert "recall" argument string into dictionary
 	if (args.sample_gid is not None): config['simulation']['sample_gid_list'] = args.sample_gid
-	if (args.sample_syn is not None): config['simulation']['sample_syn_list'] = args.sample_syn
+	if (args.sample_presyn_gid is not None): config['simulation']['sample_pre_list'] = args.sample_presyn_gid
 	if (args.sample_curr is not None): config['simulation']['sample_curr'] = args.sample_curr
 	if (args.w_ei is not None): config['populations']['w_ei'] = args.w_ei
 	if (args.w_ie is not None): config['populations']['w_ie'] = args.w_ie

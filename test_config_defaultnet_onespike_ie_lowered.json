@@ -9,7 +9,7 @@
 		"output_period" : 1,
 		"reduced_data" : 0,
 		"sample_gid_list" : [17],
-		"sample_syn_list" : [-1],
+		"sample_pre_list" : [-1],
 		"learn_protocol": {
 			"time_start": 0,
 			"scheme": "EXPLICIT",

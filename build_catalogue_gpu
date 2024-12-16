@@ -5,6 +5,4 @@ source set_arbor_env_gpu
 
 # compile the mechanisms and build the catalogue
 #rm -R -f ./tmp
-#CC=gcc-10 CXX=g++-10 arbor-build-catalogue custom mechanisms --debug "./tmp"
-#CC=gcc-10 CXX=g++-10 arbor-build-catalogue custom mechanisms
 arbor-build-catalogue custom mechanisms

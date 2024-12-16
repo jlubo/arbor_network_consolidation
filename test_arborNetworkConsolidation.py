@@ -2,7 +2,7 @@
 
 # Tests for the arborNetworkConsolidation module
 
-# Copyright 2022-2023 Jannik Luboeinski
+# Copyright 2022-2024 Jannik Luboeinski
 # License: Apache-2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 # Contact: mail[at]jlubo.net
 
@@ -28,7 +28,7 @@ def test_generated_connectivity(config_file):
 	config = json.load(open(config_file, "r")) # load JSON file
 	config["simulation"]["runtime"] = 0.1 # very short runtime (we are only interested in the initial connectivity)
 	config["simulation"]["sample_gid_list"] = [ ] # no neuron probes
-	config["simulation"]["sample_syn_list"] = [ ] # no synapse probes
+	config["simulation"]["sample_pre_list"] = [ ] # no synapse probes
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation
@@ -50,7 +50,7 @@ def test_defn_connectivity(config_file):
 	config = json.load(open(config_file, "r")) # load JSON file
 	config["simulation"]["runtime"] = 0.1 # very short runtime (we are only interested in the initial connectivity)
 	config["simulation"]["sample_gid_list"] = [ ] # no neuron probes
-	config["simulation"]["sample_syn_list"] = [ ] # no synapse probes
+	config["simulation"]["sample_pre_list"] = [ ] # no synapse probes
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation 
@@ -126,7 +126,7 @@ def test_defn_onespike(test_type, config_file):
 	n_stim = len(learn_prot["explicit_input"]["stim_times"]) # the number of stimulus pulses
 	config["simulation"]["sample_curr"] = 1 # retrieve Ornstein-Uhlenbeck stimulation current
 	sample_gid = config["simulation"]["sample_gid_list"][0] # gid of the neuron to be probed (e.g., 68)
-	sample_syn = config["simulation"]["sample_syn_list"][0] # internal number (relative to neuron determined by sample_gid) of the synapse to be probed (e.g., 154 for 6->68)
+	sample_presyn_gid = config["simulation"]["sample_pre_list"][0] # gid of the presynaptic neuron for probing synapses (e.g., 6 for synapse 6->68)
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
 	# run simulation 
@@ -146,7 +146,7 @@ def test_defn_onespike(test_type, config_file):
 		assert data_stacked[tb_before_last_spike][1] == pytest.approx(config["neuron"]["V_rev"]) # before PSP: membrane potential equal V_rev
 		if (test_type == "onespike_ee"):
 			assert sample_gid == 68
-			assert sample_syn == 153
+			assert sample_presyn_gid == 6
 			assert data_stacked[tb_before_last_spike+2][1] > config["neuron"]["V_rev"] + epsilon # upon PSP onset: membrane potential greater than V_rev
 			assert data_stacked[tb_before_last_Ca_increase+2][5] \
 				   == pytest.approx(config["synapses"]["syn_exc_calcium_plasticity"]["Ca_pre"], 1e-2) # calcium amount approx. equal to Ca_pre
@@ -174,7 +174,7 @@ def test_defn_background_noise(config_file):
 	config['simulation']['learn_protocol'] = anc.completeProt({ }) # no learning protocol
 	config['simulation']['recall_protocol'] = anc.completeProt({ }) # no recall protocol
 	config['simulation']['sample_gid_list'] = [0] # probe neuron 0
-	config['simulation']['sample_syn_list'] = [0] # probe first synapse incoming to neuron 0
+	config['simulation']['sample_pre_list'] = [27] # probe synapse incoming from neuron 27
 	config['simulation']['sample_curr'] = 2 # retrieve Ornstein-Uhlenbeck background noise current
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
@@ -203,10 +203,10 @@ def test_defn_max_activity(config_file, num_spikes_max_activity):
 	s_desc = config['simulation']['short_description'] # short description of the simulation
 	if config["populations"]["p_c"] > epsilon: # in the case that there is connectivity
 		config['simulation']['sample_gid_list'] = [862] # neuron to consider
-		config['simulation']['sample_syn_list'] = [155] # synapse to consider (0->862)
+		config['simulation']['sample_pre_list'] = [0] # synapse incoming from neuron 0
 	else: # in the case that there is no connectivity
 		config['simulation']['sample_gid_list'] = [862] # neuron to consider
-		config['simulation']['sample_syn_list'] = [-1] # no synapse to consider
+		config['simulation']['sample_pre_list'] = [-1] # no synapse to consider
 	config['simulation']['sample_curr'] = 1 # retrieve Ornstein-Uhlenbeck stimulation current
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
 
@@ -242,7 +242,7 @@ def test_def_const_conv_relax(config_file):
 	s_desc = config['simulation']['short_description'] # short description of the simulation
 	I_0 = 0.15 # constant input current (in nA)
 	config['simulation']['sample_gid_list'] = [0] # probe neuron 0
-	config['simulation']['sample_syn_list'] = [-1] # no synapse to consider
+	config['simulation']['sample_pre_list'] = [-1] # no synapse to consider
 	config['simulation']['sample_curr'] = 0 # retrieve total current
 	config['simulation']['bg_protocol']['I_0'] = I_0
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
@@ -278,7 +278,7 @@ def test_smallnetX_connectivity(network, config_file):
 	# configuration
 	config = json.load(open(config_file, "r")) # load JSON file
 	config['simulation']['sample_gid_list'] = [ ] # no neuron probes
-	config['simulation']['sample_syn_list'] = [ ] # no synapse probes
+	config['simulation']['sample_pre_list'] = [ ] # no synapse probes
 	config['simulation']['sample_curr'] = 0 # retrieve total current
 	config['simulation']['runtime'] = 0.1 # very short runtime (we are only interested in the initial connectivity)
 	config['simulation']['learn_protocol'] = anc.completeProt({ }) # no learning protocol
@@ -350,7 +350,7 @@ def test_smallnetX_max_activity(network, config_file):
 	s_desc = config['simulation']['short_description'] # short description of the simulation
 	learn_prot = anc.completeProt(config["simulation"]["learn_protocol"])
 	config['simulation']['sample_gid_list'] = [0] # neuron probes
-	config['simulation']['sample_syn_list'] = [-1] # no synapse to consider
+	config['simulation']['sample_pre_list'] = [-1] # no synapse to consider
 	config['simulation']['sample_curr'] = 0 # retrieve total current
 	config['populations']['conn_file'] = f"connections_{network}.txt" # connectivity matrix
 	if network == "smallnet3":
@@ -391,10 +391,10 @@ def test_smallnetX_onespike(network, config_file, platform):
 	learn_prot = anc.completeProt(config["simulation"]["learn_protocol"])
 	if network == "smallnet2":
 		config['simulation']['sample_gid_list'] = [2,3] # neurons to consider (3 is stimulated and projects to 2)
-		config['simulation']['sample_syn_list'] = [0,0] # synapses to consider
+		config['simulation']['sample_pre_list'] = [3,2] # presynaptic neurons to consider for synapse probing
 	elif network == "smallnet3":
 		config['simulation']['sample_gid_list'] = [2,3,4] # neurons to consider (3 is stimulated and projects to 2 and 4)
-		config['simulation']['sample_syn_list'] = [0,0,0] # synapses to consider
+		config['simulation']['sample_pre_list'] = [3,2,3] # presynaptic neurons to consider for synapse probing
 	config['simulation']['sample_curr'] = 0 # retrieve total current
 	config['populations']['conn_file'] = f"connections_{network}.txt" # connectivity matrix
 	h_0 = config['synapses']['syn_exc_calcium_plasticity']['h_0']
@@ -469,7 +469,7 @@ def test_smallnet3_schedules(runtime, learn, recall, config_file, platform):
 	s_desc += f", {runtime}, {platform}"
 	config['simulation']['short_description'] = s_desc
 	config['simulation']['sample_gid_list'] = [1] # probe neuron 1
-	config['simulation']['sample_syn_list'] = [0] # probe first synapse incoming to neuron 1
+	config['simulation']['sample_pre_list'] = [0] # probe synapse incoming from neuron 0
 	config['simulation']['sample_curr'] = 1 # retrieve Ornstein-Uhlenbeck stimulation current
 
 	func_name = inspect.getframeinfo(inspect.currentframe()).function
@@ -508,8 +508,8 @@ def test_smallnet3_schedules(runtime, learn, recall, config_file, platform):
 		assert recipe.z[1][0] > 0.4  # late-phase weight has built up at synapse 0->1 (NOTE: no `h_0` normalization here!)
 		assert recipe.p[1] > epsilon # protein has built up at neuron 1
 
-	# get spikes & test the number of spikes (unless the schedule is "consolidate", where no spikes are computed)
-	if not schedule == "consolidate":
+	# get spikes & test the number of spikes (unless the schedule is "consolidate" or "background", where no or few spikes occur)
+	if not schedule == "consolidate" and not schedule == "background":
 		spike_data = np.loadtxt(getDataPath(s_desc, "spikes.txt")).transpose()
 		spikes_0 = spike_data[0][spike_data[1] == 0] # spike times of neuron 0 (exc.)
 		spikes_1 = spike_data[0][spike_data[1] == 1] # spike times of neuron 1 (exc.)
@@ -571,13 +571,10 @@ def test_smallnet2_basic_early(prot, config_file):
 
 ###############################################################################	
 # Test a basic protocol for late-phase plasticity in a small pre-defined network ('smallnet2')
-#@pytest.mark.parametrize("config_file, platform", [("config_smallnet2_basic_late.json", "CPU"),
-#                                                   ("test_config_smallnet2_basic_late_noff.json", "CPU")])
 @pytest.mark.parametrize("config_file, platform", [("config_smallnet2_basic_late.json", "CPU"),
-                                                   ("config_smallnet2_basic_late.json", "GPU"),
+                                                   #("config_smallnet2_basic_late.json", "GPU"),  # takes long
                                                    ("test_config_smallnet2_basic_late_noff.json", "CPU")])
-#@pytest.mark.parametrize("config_file, platform", [("config_smallnet2_basic_late.json", "GPU")])
-#@pytest.mark.parametrize("config_file, platform", [("test_config_smallnet2_basic_late_noff.json", "GPU")])
+#@pytest.mark.parametrize("config_file, platform", [("test_config_smallnet2_basic_late_noff.json", "GPU")])  # takes very long
 def test_smallnet2_basic_late(config_file, platform):
 
 	# configuration (with learning protocol)

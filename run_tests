@@ -4,17 +4,17 @@
 #source build_catalogue
 #source build_catalogue_simd
 #source build_catalogue_gpu
-source build_catalogue_gpu_testing
+source build_catalogue_gpu-use_gpu_rng
 
-# run specific tests with console output
-#python3 -m pytest ./test_arborNetworkConsolidation.py::test_smallnet2_basic_early -s
-#python3 -m pytest ./test_arborNetworkConsolidation.py::test_smallnet2_basic_late -s
-#python3 -m pytest ./test_arborNetworkConsolidation.py::test_generated_connectivity -s
-#python3 -m pytest ./test_arborNetworkConsolidation.py::test_smallnetX_onespike -s
-#python3 -m pytest ./test_arborNetworkConsolidation.py::test_defn_max_activity -s
-#python3.10 -m pytest ./test_arborNetworkConsolidation.py::test_smallnet3_schedules -s
-#python3 -m pytest ./test_arborNetworkConsolidation.py::test_defn_onespike -s
-#python3.10 -m pytest ./test_arborNetworkConsolidation.py::test_smallnetX_onespike -s
+# run specific tests (add `-s` for console output)
+#python3 -m pytest ./test_arborNetworkConsolidation.py::test_smallnet2_basic_early
+#python3 -m pytest ./test_arborNetworkConsolidation.py::test_smallnet2_basic_late
+#python3 -m pytest ./test_arborNetworkConsolidation.py::test_generated_connectivity
+#python3 -m pytest ./test_arborNetworkConsolidation.py::test_smallnetX_onespike
+#python3 -m pytest ./test_arborNetworkConsolidation.py::test_defn_max_activity
+#python3 -m pytest ./test_arborNetworkConsolidation.py::test_smallnet3_schedules
+#python3 -m pytest ./test_arborNetworkConsolidation.py::test_defn_onespike
+#python3 -m pytest ./test_arborNetworkConsolidation.py::test_smallnetX_onespike
 
 # run all tests with coverage (send output to terminal and file, using tee with unbuffer)
 #python3.10 -m coverage run -m pytest ./test_arborNetworkConsolidation.py --report-log=test_result.txt

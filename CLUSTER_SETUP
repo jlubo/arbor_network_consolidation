@@ -1,0 +1,14 @@
+module load miniforge3
+
+conda create -n myenv_arbor python=3.10
+
+source activate myenv_arbor
+
+conda install -y scipy matplotlib pandas cmake svgwrite git boost svgwrite nano hyperfine expect pybind11
+conda install -y gcc=13.2.0 g++=13.2.0
+conda install -y nvidia/label/cuda-12.4.0::cuda-toolkit -c nvidia/label/cuda-12.4.0
+
+python3 -m pip install pybind11 pybind11-stubgen
+python3 -m pip install pytest pytest-cov coverage
+
+conda deactivate

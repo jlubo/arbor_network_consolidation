@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # build necessary catalogue (also sets the environment to run custom Arbor installation)
-source build_catalogue_simd
+source build_catalogue
 
 benchmark () {
 	# name of the benchmark

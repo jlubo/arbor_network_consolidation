@@ -17,7 +17,7 @@
 		"recall_protocol": { },
 		"bg_protocol": { },
 		"sample_gid_list": [ ],
-		"sample_syn_list": [ ],
+		"sample_pre_list": [ ],
 		"sample_curr": 0
 	},
 	"populations" :

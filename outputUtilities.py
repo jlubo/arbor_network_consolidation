@@ -2,7 +2,7 @@
 
 # Utility functions for displaying and storing data
 
-# Copyright 2021-2023 Jannik Luboeinski
+# Copyright 2021-2024 Jannik Luboeinski
 # License: Apache-2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 # Contact: mail[at]jlubo.net
 
@@ -159,20 +159,20 @@ def closeLog():
 	logf.close()
 
 ###############################################################################
-# getSynapseId
-# If provided, returns the synapse identifier for the corresponding neuron identifier in 'sample_gid_list', 
-# otherwise, returns the generic identifier conveyed by 'sample_gid_list' of type int.
-# - sample_syn_list: the list of synapse indices (or value -1 to disable reading)
-# - index: pointing at the list element to be considered
-# - return: the synapse identifier
-def getSynapseId(sample_syn_list, index):
+# getPresynapticId
+# If a list has been specified, returns the identifier of the postsynaptic neuron from 'sample_pre_list'
+# corresponding to the given index. Otherwise, returns the generic identifier.
+# - sample_pre_list: the list of presynaptic neuron identifiers (or value -1 to disable considering the synapse)
+# - index: index pointing at the list element to be considered
+# - return: identifier of the presynaptic neuron
+def getPresynapticId(sample_pre_list, index):
 
-		# get synapse id provided for corresponding neuron in 'sample_gid_list'
-		if len(sample_syn_list) > 1:
-			sample_syn = sample_syn_list[index]
+		# identifier of the postsynaptic neuron from 'sample_pre_list' corresponding to the given index
+		if len(sample_pre_list) > 1:
+			sample_syn = sample_pre_list[index]
 
-		# get generic synapse id that has been provided 
+		# generic identifier
 		else:
-			sample_syn = sample_syn_list[0]
+			sample_syn = sample_pre_list[0]
 
 		return sample_syn

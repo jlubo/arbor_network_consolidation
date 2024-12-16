@@ -4,24 +4,24 @@
 
 # check if PATH exists and set environment variable accordingly
 if [[ ! -v PATH ]]; then
-	export PATH=$(readlink -f ~/arbor_v0.10.0-nosimd/bin)
+	export PATH=$(readlink -f ~/arbor_v0.10.1-dev-b8b768d-nosimd/bin)
 else
-	export PATH=$(readlink -f ~/arbor_v0.10.0-nosimd/bin):$PATH
+	export PATH=$(readlink -f ~/arbor_v0.10.1-dev-b8b768d-nosimd/bin):$PATH
 fi
 
 # check if LD_LIBRARY_PATH exists and set environment variable accordingly
 if [[ ! -v LD_LIBRARY_PATH ]]; then
-	export LD_LIBRARY_PATH=$(readlink -f ~/arbor_v0.10.0-nosimd/lib)
+	export LD_LIBRARY_PATH=$(readlink -f ~/arbor_v0.10.1-dev-b8b768d-nosimd/lib)
 else
-	export LD_LIBRARY_PATH=$(readlink -f ~/arbor_v0.10.0-nosimd/lib):$LD_LIBRARY_PATH
+	export LD_LIBRARY_PATH=$(readlink -f ~/arbor_v0.10.1-dev-b8b768d-nosimd/lib):$LD_LIBRARY_PATH
 fi
 
 # check if PYTHONPATH exists and set environment variable accordingly
 if [[ ! -v PYTHONPATH ]]; then
-	export PYTHONPATH=$(readlink -f ~/arbor_v0.10.0-nosimd/lib/python3.10/site-packages) # or: .../python3.8/..., etc.
+	export PYTHONPATH=$(readlink -f ~/arbor_v0.10.1-dev-b8b768d-nosimd/lib/python3.10/site-packages) # or: .../python3.8/..., etc.
 else
-	export PYTHONPATH=$(readlink -f ~/arbor_v0.10.0-nosimd/lib/python3.10/site-packages):$PYTHONPATH # or: .../python3.8/..., etc.
+	export PYTHONPATH=$(readlink -f ~/arbor_v0.10.1-dev-b8b768d-nosimd/lib/python3.10/site-packages):$PYTHONPATH # or: .../python3.8/..., etc.
 fi
 
 # set CMAKE_PREFIX_PATH environment variable
-export CMAKE_PREFIX_PATH=$(readlink -f ~/arbor_v0.10.0-nosimd)
+export CMAKE_PREFIX_PATH=$(readlink -f ~/arbor_v0.10.1-dev-b8b768d-nosimd)
