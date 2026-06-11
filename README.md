@@ -2,7 +2,7 @@
 
 This package serves to simulate recurrent spiking neural networks, consisting of single-compartment (approximate leaky integrate-and-fire) neurons connected via current-based plastic synapses, with the Arbor simulator library.
 The long-term plasticity model that is employed features a calcium-based early phase and a late phase that is based on synaptic tagging-and-capture mechanisms. 
-The underlying model is described in detail in [Luboeinski and Tetzlaff (2021)](https://doi.org/10.1038/s42003-021-01778-y) and has also been implemented with point neurons using a [stand-alone simulator](https://github.com/jlubo/memory-consolidation-stc) as well as [Brian 2](https://github.com/jlubo/brian_network_plasticity). The code provided here serves to reproduce the previous results with the Arbor simulator library.
+The underlying model is described in detail in [Luboeinski and Tetzlaff (2021)](https://doi.org/10.1038/s42003-021-01778-y) and has also been implemented with point neurons using a [stand-alone simulator](https://github.com/jlubo/memory-consolidation-stc) as well as [Brian 2](https://github.com/jlubo/brian_network_plasticity). The code provided here serves to reproduce the previous results with the Arbor simulator library. A related publication is found [here](https://doi.org/10.1371/journal.pcbi.1013926) - please consider [citing it](BIBTEX.md) if you find this package useful.
 
 Compared to the stand-alone implementation, using Arbor has several advantages:
 * facilitated use of multi-compartment neurons,

@@ -1,0 +1,33 @@
+#!/bin/bash
+
+#SBATCH -J arbor_tests
+#SBATCH -t 48:00:00
+#SBATCH -p gpu
+#SBATCH -n 1
+#SBATCH -c 1
+#SBATCH -G V100:1
+#SBATCH -o out/%J_out
+#SBATCH -o out/%J_err
+
+# build necessary catalogue (also sets the environment to run custom Arbor installation)
+#source build_catalogue_cluster
+source build_catalogue_cluster_gpu
+
+# prepare environment
+module load miniforge3
+source activate myenv_std4 #myenv_arbor
+
+# set environment variables required to run custom Arbor installation
+source set_arbor_env_gpu
+
+# clean up
+#rm -R -f tmp_data_*
+
+# run all tests with coverage (send output to terminal and file, using tee with unbuffer)
+unbuffer python3.10 -m coverage run -m pytest ./test_arborNetworkConsolidation.py | tee -i test_result.txt
+
+# line coverage output
+python3.10 -m coverage report -m --omit=/usr/*,**/lib/python*/* > test_coverage.txt
+
+# exit environment
+conda deactivate

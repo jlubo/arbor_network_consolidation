@@ -2,9 +2,9 @@
 
 # build necessary catalogue (also sets the environment to run custom Arbor installation)
 #source build_catalogue
-#source build_catalogue_simd
+source build_catalogue_simd
 #source build_catalogue_gpu
-source build_catalogue_gpu-use_gpu_rng
+#source build_catalogue_gpu-use_gpu_rng
 
 # run specific tests (add `-s` for console output)
 #python3 -m pytest ./test_arborNetworkConsolidation.py::test_smallnet2_basic_early
